@@ -243,10 +243,13 @@
         let studyTimerState = 'setting', programs = [], settingTime = 0, runningTime = 0;
         let currentProgramIndex = 0, totalRepeats = 1, completedRepeats = 0;
         let showHundredths = false, timerInterval = null, isSettingProgram = false;
-
+        
         // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
-        const chimeSound = new Audio('Chime.wav');
+        // Web Workerを使わずにバックグラウンドでもタイマーの精度を保つための実装
+        let expectedEndTime = 0; 
         // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
+
+        const chimeSound = new Audio('Chime.wav');
         function playChime() {
             chimeSound.currentTime = 0;
             chimeSound.play().catch(error => console.error("音声の再生に失敗しました:", error));
@@ -293,27 +296,31 @@
         }
         
         function timerTick() {
-            runningTime -= 10;
+            // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
+            // 経過時間から残り時間を再計算し、タイマーのズレを補正
+            runningTime = expectedEndTime - Date.now();
+            // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
+
             if (runningTime <= 0) {
                 playChime();
                 currentProgramIndex++;
                 if (currentProgramIndex >= programs.length) {
                     currentProgramIndex = 0;
                     completedRepeats++;
-                    if (totalRepeats !== 0 && completedRepeats >= totalRepeats) { // --- ▼▼▼ JS変更箇所 ▼▼▼ (「>」を「>=」に変更)
+                    if (totalRepeats !== 0 && completedRepeats >= totalRepeats) {
                         studyTimerState = 'finished';
                         clearInterval(timerInterval);
                         runningTime = 0;
                         messageEl.textContent = 'Your work is finished today!';
                         messageEl.style.fontSize = '';
                         btnStartPause.textContent = 'Finished';
-                        // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
                         updateStudyTimerDisplay();
                         return;
                     }
                 }
                 if (studyTimerState !== 'finished') {
                     runningTime = programs[currentProgramIndex].time * 1000;
+                    expectedEndTime = Date.now() + runningTime; // 次の目標時刻をセット
                     updateRunningMessage();
                 }
             }
@@ -331,7 +338,7 @@
         function handleRepeatChange(amount) {
             if (studyTimerState !== 'setting' || isSettingProgram) return;
             totalRepeats += amount;
-            if (totalRepeats < 1) totalRepeats = 1; // 繰り返し回数の下限を1に
+            if (totalRepeats < 1) totalRepeats = 1;
             if (totalRepeats > 999) totalRepeats = 999;
             updateStudyTimerDisplay();
         }
@@ -353,6 +360,29 @@
         /*******************************************************************
          * 5. メイン制御・初期化
          *******************************************************************/
+
+        // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
+        // ボタン長押し高速化の汎用関数
+        function makeButtonAccelerate(element, action) {
+            let timeoutId, intervalId;
+            const startAction = (e) => {
+                e.preventDefault(); // スマホでの長押し時のメニュー表示などを防ぐ
+                action();
+                timeoutId = setTimeout(() => {
+                    intervalId = setInterval(action, 100); // 0.1秒ごとに実行
+                }, 500); // 0.5秒後に加速開始
+            };
+            const stopAction = () => {
+                clearTimeout(timeoutId);
+                clearInterval(intervalId);
+            };
+            element.addEventListener('mousedown', startAction);
+            element.addEventListener('mouseup', stopAction);
+            element.addEventListener('mouseleave', stopAction);
+            element.addEventListener('touchstart', startAction);
+            element.addEventListener('touchend', stopAction);
+        }
+        // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
 
         function setupEventListeners() {
             // モード切替
@@ -376,21 +406,26 @@
                 }
             });
 
-            // 時間割タイマー：コントロール
-            document.getElementById('btn-plus-10m').addEventListener('click', () => handleTimeChange(600));
-            document.getElementById('btn-plus-1m').addEventListener('click', () => handleTimeChange(60));
-            document.getElementById('btn-plus-1s').addEventListener('click', () => handleTimeChange(1));
-            document.getElementById('btn-minus-10m').addEventListener('click', () => handleTimeChange(-600));
-            document.getElementById('btn-minus-1m').addEventListener('click', () => handleTimeChange(-60));
-            document.getElementById('btn-minus-1s').addEventListener('click', () => handleTimeChange(-1));
-            document.getElementById('btn-repeat-plus').addEventListener('click', () => handleRepeatChange(1));
-            document.getElementById('btn-repeat-minus').addEventListener('click', () => handleRepeatChange(-1));
+            // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
+            // 時間割タイマー：コントロール（長押し対応）
+            makeButtonAccelerate(document.getElementById('btn-plus-10m'), () => handleTimeChange(600));
+            makeButtonAccelerate(document.getElementById('btn-plus-1m'), () => handleTimeChange(60));
+            makeButtonAccelerate(document.getElementById('btn-plus-1s'), () => handleTimeChange(1));
+            makeButtonAccelerate(document.getElementById('btn-minus-10m'), () => handleTimeChange(-600));
+            makeButtonAccelerate(document.getElementById('btn-minus-1m'), () => handleTimeChange(-60));
+            makeButtonAccelerate(document.getElementById('btn-minus-1s'), () => handleTimeChange(-1));
+            makeButtonAccelerate(document.getElementById('btn-repeat-plus'), () => handleRepeatChange(1));
+            makeButtonAccelerate(document.getElementById('btn-repeat-minus'), () => handleRepeatChange(-1));
+            
+            // 長押し非対応のボタン
             document.getElementById('btn-reset').addEventListener('click', resetStudyTimer);
             btnShow100s.addEventListener('click', () => {
                 showHundredths = !showHundredths;
                 btnShow100s.classList.toggle('toggled', showHundredths);
                 updateStudyTimerDisplay();
             });
+            // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
+
             document.getElementById('btn-next-subject').addEventListener('click', () => {
                 if (studyTimerState !== 'setting' || isSettingProgram) return;
                 currentSubjectIndex = (currentSubjectIndex + 1) % subjects.length;
@@ -424,7 +459,7 @@
 
             // Start/Pause/Resume
             btnStartPause.addEventListener('click', () => {
-                if (isSettingProgram || studyTimerState === 'finished') return; // --- ▼▼▼ JS変更箇所 ▼▼▼ (完了時は何もしない)
+                if (isSettingProgram || studyTimerState === 'finished') return;
                 if (studyTimerState === 'setting') {
                     if (programs.length === 0 && settingTime > 0) {
                         let subjectToSet = subjects[currentSubjectIndex];
@@ -438,10 +473,11 @@
                     if (programs.length === 0) return;
                     studyTimerState = 'running';
                     currentProgramIndex = 0;
-                    completedRepeats = 0; // 開始時にリセット
-                    updateStudyTimerDisplay(); // 先に表示を更新
-                    completedRepeats = 1; // 1回目の実行
+                    completedRepeats = 0;
+                    updateStudyTimerDisplay();
+                    completedRepeats = 1;
                     runningTime = programs[0].time * 1000;
+                    expectedEndTime = Date.now() + runningTime; // 目標時刻をセット
                     updateRunningMessage();
                     timerInterval = setInterval(timerTick, 10);
                     btnStartPause.textContent = 'Pause';
@@ -449,9 +485,11 @@
                 } else if (studyTimerState === 'running') {
                     studyTimerState = 'paused';
                     clearInterval(timerInterval);
+                    runningTime = expectedEndTime - Date.now(); // 残り時間を正確に保存
                     btnStartPause.textContent = 'Resume';
                 } else if (studyTimerState === 'paused') {
                     studyTimerState = 'running';
+                    expectedEndTime = Date.now() + runningTime; // 新しい目標時刻をセット
                     timerInterval = setInterval(timerTick, 10);
                     btnStartPause.textContent = 'Pause';
                 }
