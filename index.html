@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>タイマー</title>
     <style>
-        /* (CSSに変更はありません) */
+        /* (CSSは一部変更) */
         @font-face {
             font-family: 'DSEG7 Classic'; src: url('./fonts/DSEG7Classic-Bold.woff2') format('woff2');
             font-weight: bold; font-style: normal;
@@ -15,7 +15,7 @@
             font-weight: bold; font-style: normal;
         }
         @font-face {
-            font-family: 'LED Calculator'; src: url('./fonts/LEDCALCULATOR.TTF') format('truetype');
+            font-family: 'LED Calculator'; src: url('./fonts/LEDCalculator.ttf') format('truetype');
         }
         @font-face {
             font-family: 'Ktai-Dot-Font-LCD'; src: url('./fonts/Ketai-dot-font-LCD.otf') format('opentype');
@@ -68,7 +68,7 @@
         }
         @keyframes blink { 50% { opacity: 0; } }
         .timer-mode-container { display: none; }
-        #switch-button-area { margin-bottom: 20px; }
+        #switch-button-area { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; }
         .switch-btn {
             background: #333; color: #fff; border: 1px solid #555;
             padding: 5px 10px; font-family: sans-serif; font-size: 12px; cursor: pointer;
@@ -108,13 +108,43 @@
         .control-btn:hover { opacity: 1.0; }
         .control-btn:active { opacity: 0.6; }
         .control-btn.toggled { color: red; opacity: 1.0; }
+        #records-container {
+            font-family: 'LED Calculator', sans-serif;
+            color: orange;
+            font-size: 16px;
+            text-align: left;
+            width: 500px;
+        }
+        #log-list { margin-bottom: 10px; }
+        #log-list .log-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .del-btn {
+            background: none; border: none; color: red;
+            font-family: 'LED Calculator', sans-serif;
+            font-size: 16px; cursor: pointer; opacity: 0.7;
+        }
+        .del-btn:hover { opacity: 1.0; }
+        /* ▼▼▼ CSS変更箇所 ▼▼▼ */
+        #subject-summary {
+            font-family: 'LED Calculator', sans-serif; /* 念のためフォントを再指定 */
+            white-space: pre;
+            font-size: 16px;
+            margin: 0;
+        }
+        /* ▲▲▲ CSS変更箇所ここまで ▲▲▲ */
     </style>
 </head>
 <body>
     <div class="container">
         <!-- (HTMLは変更なし) -->
         <div id="message-area"></div>
-        <div id="switch-button-area"><button id="switch-timer-btn" class="switch-btn">時間割タイマーへ</button></div>
+        <div id="switch-button-area">
+            <button id="switch-timer-btn" class="switch-btn">時間割タイマーへ</button>
+            <button id="switch-records-btn" class="switch-btn">記録を見る</button>
+        </div>
         <div id="countdown-container" class="timer-mode-container">
             <div class="countdown">
                 <div id="countdown-ms"><span id="min" data-placeholder="88">00</span>:<span id="sec" data-placeholder="88">00</span></div>
@@ -143,6 +173,11 @@
                 <button id="btn-pset" class="control-btn">P-Set</button><button id="btn-start-pause" class="control-btn">Start</button>
             </div>
         </div>
+        <div id="records-container" class="timer-mode-container">
+            <div>Records</div>
+            <div id="log-list"></div>
+            <pre id="subject-summary"></pre>
+        </div>
     </div>
 
     <script>
@@ -163,9 +198,13 @@
         const studyRepeatsTotalEl = document.getElementById('study-repeats-total');
         const studyRepeatsCompletedEl = document.getElementById('study-repeats-completed');
         const studyProgramNumberEl = document.getElementById('study-program-number');
+        const switchRecordsBtn = document.getElementById('switch-records-btn');
+        const recordsContainer = document.getElementById('records-container');
+        const logListEl = document.getElementById('log-list');
+        const subjectSummaryEl = document.getElementById('subject-summary');
         
         /*******************************************************************
-         * 2. 共通テストタイマー関連
+         * 2. 共通テストタイマー関連 (変更なし)
          *******************************************************************/
         
         const targetDate = new Date("2026-01-17T00:00:00");
@@ -205,7 +244,7 @@
         }
 
         /*******************************************************************
-         * 3. ランダムメッセージ関連
+         * 3. ランダムメッセージ関連 (変更なし)
          *******************************************************************/
         
         const randomMessages = ["キョウツウテストマデ アト DDDニチ!","シッテタ? キュウジツハアトddニチシカナインダヨ!","ナニヤッテルンデスカ、 ベンキョウシテクダサイ!","ガンバルアナタヲ オウエンシテイマス。","ヒトヤスミモ ダイジデスヨ。","モウコウコウモ オワッチャウネェ","トキノナガレハ ハヤイモノダヨ","ハナレバナレニ ナッテシマウノカナ...","ベンキョウ ガンバレヨ!","イママデノドリョクヲシンジテ。","キミナラデキル!","ラストスパートダ!","サイコウノハルヲムカエヨウ!","ムリシスギナイデネ。","ヒトリジャナイヨ。","アトスコシノシンボウ...","コンディションヲトトノエテ。","ケッカハカナラズツイテクル。","オワッタラ パーットアソボウゼ!"];
@@ -235,7 +274,7 @@
         }
         
         /*******************************************************************
-         * 4. 時間割タイマー関連
+         * 4. 時間割タイマー関連 (変更なし)
          *******************************************************************/
 
         const subjects = ["Break", "Modern-Japanese", "Old-Japanese", "Old-Chinese", "Mathematics", "English", "Japan History", "World History", "Geography", "Physics", "Biology", "Science", "Information", "RANDOM"];
@@ -243,14 +282,21 @@
         let studyTimerState = 'setting', programs = [], settingTime = 0, runningTime = 0;
         let currentProgramIndex = 0, totalRepeats = 1, completedRepeats = 0;
         let showHundredths = false, timerInterval = null, isSettingProgram = false;
-        
-        // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
-        // Web Workerを使わずにバックグラウンドでもタイマーの精度を保つための実装
         let expectedEndTime = 0; 
-        // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
-
         const chimeSound = new Audio('Chime.wav');
+        let isAudioUnlocked = false;
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            chimeSound.volume = 0;
+            chimeSound.play().then(() => {
+                chimeSound.pause(); chimeSound.currentTime = 0; chimeSound.volume = 1;
+                isAudioUnlocked = true; console.log("Audio unlocked successfully.");
+            }).catch(error => console.error("Audio unlock failed:", error));
+        }
+        
         function playChime() {
+            if (!isAudioUnlocked) return;
             chimeSound.currentTime = 0;
             chimeSound.play().catch(error => console.error("音声の再生に失敗しました:", error));
         }
@@ -296,12 +342,13 @@
         }
         
         function timerTick() {
-            // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
-            // 経過時間から残り時間を再計算し、タイマーのズレを補正
             runningTime = expectedEndTime - Date.now();
-            // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
-
             if (runningTime <= 0) {
+                const finishedProgram = programs[currentProgramIndex];
+                if (finishedProgram.subject !== 'Break') {
+                    const endTime = expectedEndTime > Date.now() ? Date.now() : expectedEndTime;
+                    addRecord(endTime - (finishedProgram.time * 1000), endTime, finishedProgram.subject);
+                }
                 playChime();
                 currentProgramIndex++;
                 if (currentProgramIndex >= programs.length) {
@@ -320,7 +367,7 @@
                 }
                 if (studyTimerState !== 'finished') {
                     runningTime = programs[currentProgramIndex].time * 1000;
-                    expectedEndTime = Date.now() + runningTime; // 次の目標時刻をセット
+                    expectedEndTime = Date.now() + runningTime;
                     updateRunningMessage();
                 }
             }
@@ -358,56 +405,117 @@
         }
         
         /*******************************************************************
-         * 5. メイン制御・初期化
+         * 6. 記録機能関連 (変更なし)
          *******************************************************************/
 
-        // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
-        // ボタン長押し高速化の汎用関数
+        const subjectAbbreviations = { "Modern-Japanese": "M-JPN. ", "Old-Japanese": "O-JPN. ", "Old-Chinese": "O-CHN. ", "Mathematics": "Math.  ", "English": "ENG.   ", "Japan History": "J-Hist.", "World History": "W-Hist.", "Geography": "Geo.   ", "Physics": "Phy.   ", "Biology": "Bio.   ", "Science": "Sci.   ", "Information": "Info.  ", };
+        const formatTime = (timestamp) => { const d = new Date(timestamp); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+        const formatDuration = (ms) => { if (ms <= 0) return '0h00m'; const totalMins = Math.round(ms / 60000); const hours = Math.floor(totalMins / 60); const mins = totalMins % 60; return `${hours}h${String(mins).padStart(2, '0')}m`; };
+        const loadRecords = () => JSON.parse(localStorage.getItem('studyRecords') || '[]');
+        const saveRecords = (records) => localStorage.setItem('studyRecords', JSON.stringify(records));
+
+        function checkDailyReset() {
+            const now = new Date();
+            const lastResetStr = localStorage.getItem('lastReset');
+            if (!lastResetStr) { localStorage.setItem('lastReset', now.getTime()); return; }
+            const lastReset = new Date(parseInt(lastResetStr));
+            let last4AM = new Date();
+            last4AM.setHours(4, 0, 0, 0);
+            if (now.getHours() < 4) { last4AM.setDate(last4AM.getDate() - 1); }
+            if (lastReset < last4AM) {
+                saveRecords([]);
+                localStorage.setItem('lastReset', now.getTime());
+            }
+        }
+
+        function addRecord(startTime, endTime, subject) {
+            const records = loadRecords();
+            records.push({ id: startTime, startTime, endTime, subject });
+            saveRecords(records);
+            if (currentTimerMode === 'records') renderRecords();
+        }
+
+        function deleteRecord(id) {
+            let records = loadRecords();
+            records = records.filter(r => r.id !== id);
+            saveRecords(records);
+            renderRecords();
+        }
+
+        function renderRecords() {
+            const records = loadRecords();
+            logListEl.innerHTML = '';
+            const subjectTotals = {};
+            let grandTotal = 0;
+            for (const record of records) {
+                const duration = record.endTime - record.startTime;
+                grandTotal += duration;
+                subjectTotals[record.subject] = (subjectTotals[record.subject] || 0) + duration;
+                const logItem = document.createElement('div');
+                logItem.className = 'log-item';
+                logItem.innerHTML = `
+                    <span>${formatTime(record.startTime)}-${formatTime(record.endTime)} ${record.subject} (${formatDuration(duration)})</span>
+                    <button class="del-btn" data-id="${record.id}">[Del]</button>
+                `;
+                logListEl.appendChild(logItem);
+            }
+            let summaryText = '-------------------------------------\nTotal (By Subjects)\n-------------------------------------\n';
+            for (const subject in subjectAbbreviations) {
+                const totalMs = subjectTotals[subject] || 0;
+                if (totalMs > 0) {
+                    summaryText += `${subjectAbbreviations[subject]}|${formatDuration(totalMs)}\n`;
+                }
+            }
+            summaryText += '-------------------------------------\n';
+            summaryText += `Total  |${formatDuration(grandTotal)}`;
+            subjectSummaryEl.textContent = summaryText;
+        }
+
+        /*******************************************************************
+         * 7. メイン制御・初期化 (変更なし)
+         *******************************************************************/
+
         function makeButtonAccelerate(element, action) {
             let timeoutId, intervalId;
             const startAction = (e) => {
-                e.preventDefault(); // スマホでの長押し時のメニュー表示などを防ぐ
-                action();
-                timeoutId = setTimeout(() => {
-                    intervalId = setInterval(action, 100); // 0.1秒ごとに実行
-                }, 500); // 0.5秒後に加速開始
+                e.preventDefault(); unlockAudio(); action();
+                timeoutId = setTimeout(() => { intervalId = setInterval(action, 100); }, 500);
             };
-            const stopAction = () => {
-                clearTimeout(timeoutId);
-                clearInterval(intervalId);
-            };
+            const stopAction = () => { clearTimeout(timeoutId); clearInterval(intervalId); };
             element.addEventListener('mousedown', startAction);
             element.addEventListener('mouseup', stopAction);
             element.addEventListener('mouseleave', stopAction);
             element.addEventListener('touchstart', startAction);
             element.addEventListener('touchend', stopAction);
         }
-        // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
 
         function setupEventListeners() {
-            // モード切替
             switchBtn.addEventListener('click', () => {
-                if (currentTimerMode === 'countdown') {
-                    currentTimerMode = 'study';
-                    messageEl.textContent = '';
-                    countdownContainer.style.display = 'none';
-                    studyTimerContainer.style.display = 'block';
-                    switchBtn.textContent = '共通テストタイマーへ';
-                    messageEl.classList.add('subject-mode');
-                    resetStudyTimer();
-                } else {
-                    currentTimerMode = 'countdown';
-                    messageEl.textContent = '';
-                    countdownContainer.style.display = 'block';
-                    studyTimerContainer.style.display = 'none';
-                    switchBtn.textContent = '時間割タイマーへ';
-                    messageEl.classList.remove('subject-mode');
-                    messageEl.style.fontSize = '';
+                currentTimerMode = currentTimerMode === 'countdown' ? 'study' : 'countdown';
+                countdownContainer.style.display = currentTimerMode === 'countdown' ? 'block' : 'none';
+                studyTimerContainer.style.display = currentTimerMode === 'study' ? 'block' : 'none';
+                recordsContainer.style.display = 'none';
+                switchBtn.textContent = currentTimerMode === 'countdown' ? '時間割タイマーへ' : '共通テストタイマーへ';
+                messageEl.classList.toggle('subject-mode', currentTimerMode === 'study');
+                messageEl.style.fontSize = '';
+                if (currentTimerMode === 'study') resetStudyTimer();
+            });
+
+            switchRecordsBtn.addEventListener('click', () => {
+                currentTimerMode = 'records';
+                countdownContainer.style.display = 'none';
+                studyTimerContainer.style.display = 'none';
+                recordsContainer.style.display = 'block';
+                renderRecords();
+            });
+
+            logListEl.addEventListener('click', (e) => {
+                if (e.target.classList.contains('del-btn')) {
+                    const recordId = parseInt(e.target.dataset.id);
+                    deleteRecord(recordId);
                 }
             });
 
-            // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
-            // 時間割タイマー：コントロール（長押し対応）
             makeButtonAccelerate(document.getElementById('btn-plus-10m'), () => handleTimeChange(600));
             makeButtonAccelerate(document.getElementById('btn-plus-1m'), () => handleTimeChange(60));
             makeButtonAccelerate(document.getElementById('btn-plus-1s'), () => handleTimeChange(1));
@@ -417,30 +525,23 @@
             makeButtonAccelerate(document.getElementById('btn-repeat-plus'), () => handleRepeatChange(1));
             makeButtonAccelerate(document.getElementById('btn-repeat-minus'), () => handleRepeatChange(-1));
             
-            // 長押し非対応のボタン
             document.getElementById('btn-reset').addEventListener('click', resetStudyTimer);
             btnShow100s.addEventListener('click', () => {
-                showHundredths = !showHundredths;
-                btnShow100s.classList.toggle('toggled', showHundredths);
-                updateStudyTimerDisplay();
+                showHundredths = !showHundredths; btnShow100s.classList.toggle('toggled', showHundredths); updateStudyTimerDisplay();
             });
-            // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
 
             document.getElementById('btn-next-subject').addEventListener('click', () => {
                 if (studyTimerState !== 'setting' || isSettingProgram) return;
-                currentSubjectIndex = (currentSubjectIndex + 1) % subjects.length;
-                updateSubjectDisplay();
+                currentSubjectIndex = (currentSubjectIndex + 1) % subjects.length; updateSubjectDisplay();
             });
             document.getElementById('btn-prev-subject').addEventListener('click', () => {
                 if (studyTimerState !== 'setting' || isSettingProgram) return;
-                currentSubjectIndex = (currentSubjectIndex - 1 + subjects.length) % subjects.length;
-                updateSubjectDisplay();
+                currentSubjectIndex = (currentSubjectIndex - 1 + subjects.length) % subjects.length; updateSubjectDisplay();
             });
             
-            // P-Set
             document.getElementById('btn-pset').addEventListener('click', async () => {
                 if (studyTimerState !== 'setting' || settingTime === 0 || programs.length >= 99 || isSettingProgram) return;
-                isSettingProgram = true;
+                unlockAudio(); isSettingProgram = true;
                 let subjectToSet = subjects[currentSubjectIndex];
                 if (subjectToSet === 'RANDOM') {
                     const candidateSubjects = subjects.filter(s => s !== 'Break' && s !== 'RANDOM');
@@ -452,14 +553,12 @@
                 settingTime = 0;
                 updateStudyTimerDisplay();
                 await sleep(2000);
-                currentSubjectIndex = 0;
-                isSettingProgram = false;
-                updateSubjectDisplay();
+                currentSubjectIndex = 0; isSettingProgram = false; updateSubjectDisplay();
             });
 
-            // Start/Pause/Resume
             btnStartPause.addEventListener('click', () => {
                 if (isSettingProgram || studyTimerState === 'finished') return;
+                unlockAudio();
                 if (studyTimerState === 'setting') {
                     if (programs.length === 0 && settingTime > 0) {
                         let subjectToSet = subjects[currentSubjectIndex];
@@ -472,24 +571,19 @@
                     }
                     if (programs.length === 0) return;
                     studyTimerState = 'running';
-                    currentProgramIndex = 0;
-                    completedRepeats = 0;
-                    updateStudyTimerDisplay();
-                    completedRepeats = 1;
+                    currentProgramIndex = 0; completedRepeats = 0; updateStudyTimerDisplay(); completedRepeats = 1;
                     runningTime = programs[0].time * 1000;
-                    expectedEndTime = Date.now() + runningTime; // 目標時刻をセット
+                    expectedEndTime = Date.now() + runningTime;
                     updateRunningMessage();
                     timerInterval = setInterval(timerTick, 10);
-                    btnStartPause.textContent = 'Pause';
-                    btnStartPause.classList.add('toggled');
+                    btnStartPause.textContent = 'Pause'; btnStartPause.classList.add('toggled');
                 } else if (studyTimerState === 'running') {
-                    studyTimerState = 'paused';
-                    clearInterval(timerInterval);
-                    runningTime = expectedEndTime - Date.now(); // 残り時間を正確に保存
+                    studyTimerState = 'paused'; clearInterval(timerInterval);
+                    runningTime = expectedEndTime - Date.now();
                     btnStartPause.textContent = 'Resume';
                 } else if (studyTimerState === 'paused') {
                     studyTimerState = 'running';
-                    expectedEndTime = Date.now() + runningTime; // 新しい目標時刻をセット
+                    expectedEndTime = Date.now() + runningTime;
                     timerInterval = setInterval(timerTick, 10);
                     btnStartPause.textContent = 'Pause';
                 }
@@ -497,6 +591,7 @@
         }
 
         function initialize() {
+            checkDailyReset();
             countdownContainer.style.display = 'block';
             setInterval(updateCountdownTimer, 1);
             runMessageLoop();
