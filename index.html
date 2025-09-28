@@ -56,12 +56,16 @@
             height: 32px; line-height: 32px; position: relative;
         }
         #message-area::after {
-            content: '_'; position: absolute; animation: blink 1s step-end infinite;
-            font-family: 'LED Calculator', sans-serif;
+            content: '_'; position: absolute; animation: blink 1s step-end infinite; font-family: 'LED Calculator', sans-serif;
         }
         #message-area.subject-mode {
             font-family: 'LED Calculator', sans-serif;
             font-size: 32px; letter-spacing: 1px;
+        }
+        /* 時間割タイマーで休憩時間を表示する際の専用スタイル */
+        #message-area.subject-mode.break-mode {
+            font-family: 'LED Calculator', sans-serif;
+            font-size: 29px;
         }
         #message-area.subject-mode::after {
             content: ''; animation: none;
@@ -322,25 +326,26 @@
         // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
         function updateSubjectDisplay() { // (旧updateRunningMessage)
             if (studyTimerState === 'setting' || programs.length === 0) {
-                messageEl.style.fontSize = '';
+                messageEl.classList.remove('break-mode');
                 messageEl.textContent = subjects[currentSubjectIndex];
                 return;
             }
             if (studyTimerState === 'finished') {
-                messageEl.style.fontSize = '';
+                messageEl.classList.remove('break-mode');
                 messageEl.textContent = 'Your work is finished today!';
                 return;
             }
 
             const currentProgram = programs[currentProgramIndex];
             let message = currentProgram.subject;
+            messageEl.classList.remove('break-mode');
 
             if (studyTimerState === 'running') {
                 const endTimeStr = formatTime(expectedEndTime);
                 if (currentProgram.subject === "Break") {
                     const nextIndex = (currentProgramIndex + 1) % programs.length;
                     const nextSubject = programs[nextIndex].subject;
-                    messageEl.style.fontSize = '29px';
+                    messageEl.classList.add('break-mode');
                     message = `Break (NEXT: ${nextSubject}, Starts at ${endTimeStr})`;
                 } else {
                     messageEl.style.fontSize = '';
@@ -409,8 +414,8 @@
             currentProgramIndex = 0; completedRepeats = 0;
             totalRepeats = 1;
             btnStartPause.textContent = 'Start';
-            btnStartPause.classList.remove('toggled');
-            messageEl.style.fontSize = '';
+            btnStartPause.classList.remove('toggled');            
+            messageEl.classList.remove('break-mode');
             currentSubjectIndex = 0;
             updateStudyTimerDisplay();
             updateSubjectDisplay();
@@ -517,7 +522,7 @@
                 switchRecordsBtn.textContent = '記録を見る'; // 記録ボタンのテキストをリセット
 
                 messageEl.classList.toggle('subject-mode', !isCurrentlyCountdown);
-                messageEl.style.fontSize = '';
+                messageEl.classList.remove('break-mode');
                 if (currentTimerMode === 'study') resetStudyTimer();
             });
 
