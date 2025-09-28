@@ -56,16 +56,12 @@
             height: 32px; line-height: 32px; position: relative;
         }
         #message-area::after {
-            content: '_'; position: absolute; animation: blink 1s step-end infinite; font-family: 'LED Calculator', sans-serif;
+            content: '_'; position: absolute; animation: blink 1s step-end infinite;
+            font-family: 'LED Calculator', sans-serif;
         }
         #message-area.subject-mode {
             font-family: 'LED Calculator', sans-serif;
             font-size: 32px; letter-spacing: 1px;
-        }
-        /* 時間割タイマーで休憩時間を表示する際の専用スタイル */
-        #message-area.subject-mode.break-mode {
-            font-family: 'LED Calculator', sans-serif;
-            font-size: 29px;
         }
         #message-area.subject-mode::after {
             content: ''; animation: none;
@@ -141,6 +137,7 @@
 </head>
 <body>
     <div class="container">
+        <!-- (HTMLは変更なし) -->
         <div id="message-area"></div>
         <div id="switch-button-area">
             <button id="switch-timer-btn" class="switch-btn">時間割タイマーへ</button>
@@ -188,6 +185,9 @@
 
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         let currentTimerMode = 'countdown';
+        // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
+        let previousTimerMode = 'countdown'; // 記録画面から戻るための状態保存
+        // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
         const messageEl = document.getElementById('message-area');
         const switchBtn = document.getElementById('switch-timer-btn');
         const countdownContainer = document.getElementById('countdown-container');
@@ -323,39 +323,42 @@
             }
         }
         
-        // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
-        function updateSubjectDisplay() { // (旧updateRunningMessage)
-            if (studyTimerState === 'setting' || programs.length === 0) {
-                messageEl.classList.remove('break-mode');
+        function updateSubjectDisplay() {
+            if (studyTimerState === 'setting' && !isSettingProgram) {
                 messageEl.textContent = subjects[currentSubjectIndex];
-                return;
             }
-            if (studyTimerState === 'finished') {
-                messageEl.classList.remove('break-mode');
-                messageEl.textContent = 'Your work is finished today!';
-                return;
-            }
+        }
+
+        // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
+        function updateRunningMessage() {
+            if (!['running', 'paused', 'finished'].includes(studyTimerState) || programs.length === 0) return;
 
             const currentProgram = programs[currentProgramIndex];
-            let message = currentProgram.subject;
-            messageEl.classList.remove('break-mode');
+            
+            // 一時停止中の表示
+            if (studyTimerState === 'paused') {
+                messageEl.textContent = `${currentProgram.subject} (Paused)`;
+                messageEl.style.fontSize = '';
+                return;
+            }
 
-            if (studyTimerState === 'running') {
-                const endTimeStr = formatTime(expectedEndTime);
-                if (currentProgram.subject === "Break") {
+            const endTimeFormatted = formatTime(expectedEndTime);
+
+            // 実行中の表示
+            if (currentProgram.subject === "Break") {
+                const nextRep = (currentProgramIndex + 1 >= programs.length) ? (completedRepeats) : (completedRepeats - 1);
+                if (totalRepeats !== 0 && nextRep >= totalRepeats) {
+                    messageEl.textContent = 'Break (Last one!)';
+                } else {
                     const nextIndex = (currentProgramIndex + 1) % programs.length;
                     const nextSubject = programs[nextIndex].subject;
-                    messageEl.classList.add('break-mode');
-                    message = `Break (NEXT: ${nextSubject}, Starts at ${endTimeStr})`;
-                } else {
-                    messageEl.style.fontSize = '';
-                    message = `${currentProgram.subject} (Ends at ${endTimeStr})`;
+                    messageEl.textContent = `Break (NEXT: ${nextSubject}, Starts at ${endTimeFormatted})`;
                 }
-            } else { // paused
-                 messageEl.style.fontSize = '';
-                 message = currentProgram.subject;
+                messageEl.style.fontSize = '29px';
+            } else {
+                messageEl.textContent = `${currentProgram.subject} (Ends at ${endTimeFormatted})`;
+                messageEl.style.fontSize = '';
             }
-            messageEl.textContent = message;
         }
         // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
         
@@ -376,8 +379,9 @@
                         studyTimerState = 'finished';
                         clearInterval(timerInterval);
                         runningTime = 0;
+                        messageEl.textContent = 'Your work is finished today!';
+                        messageEl.style.fontSize = '';
                         btnStartPause.textContent = 'Finished';
-                        updateSubjectDisplay(); // メッセージを更新
                         updateStudyTimerDisplay();
                         return;
                     }
@@ -385,7 +389,7 @@
                 if (studyTimerState !== 'finished') {
                     runningTime = programs[currentProgramIndex].time * 1000;
                     expectedEndTime = Date.now() + runningTime;
-                    updateSubjectDisplay(); // メッセージを更新
+                    updateRunningMessage();
                 }
             }
             updateStudyTimerDisplay();
@@ -414,8 +418,8 @@
             currentProgramIndex = 0; completedRepeats = 0;
             totalRepeats = 1;
             btnStartPause.textContent = 'Start';
-            btnStartPause.classList.remove('toggled');            
-            messageEl.classList.remove('break-mode');
+            btnStartPause.classList.remove('toggled');
+            messageEl.style.fontSize = '';
             currentSubjectIndex = 0;
             updateStudyTimerDisplay();
             updateSubjectDisplay();
@@ -449,7 +453,7 @@
             const records = loadRecords();
             records.push({ id: startTime, startTime, endTime, subject });
             saveRecords(records);
-            if (document.getElementById('records-container').style.display === 'block') renderRecords();
+            if (currentTimerMode === 'records') renderRecords();
         }
 
         function deleteRecord(id) {
@@ -506,38 +510,44 @@
             element.addEventListener('touchend', stopAction);
         }
 
-        // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
         function setupEventListeners() {
-            // メインのタイマー種別切り替えボタン
+            // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
             switchBtn.addEventListener('click', () => {
-                const isCurrentlyCountdown = countdownContainer.style.display === 'block';
-                currentTimerMode = isCurrentlyCountdown ? 'study' : 'countdown';
-
-                countdownContainer.style.display = isCurrentlyCountdown ? 'none' : 'block';
-                studyTimerContainer.style.display = isCurrentlyCountdown ? 'block' : 'none';
-                recordsContainer.style.display = 'none'; // 記録画面は必ず非表示
-
-                switchBtn.textContent = isCurrentlyCountdown ? '共通テストタイマーへ' : '時間割タイマーへ';
-                switchRecordsBtn.style.display = isCurrentlyCountdown ? 'block' : 'none';
-                switchRecordsBtn.textContent = '記録を見る'; // 記録ボタンのテキストをリセット
-
-                messageEl.classList.toggle('subject-mode', !isCurrentlyCountdown);
-                messageEl.classList.remove('break-mode');
-                if (currentTimerMode === 'study') resetStudyTimer();
-            });
-
-            // 時間割タイマー内の、記録画面との切り替えボタン
-            switchRecordsBtn.addEventListener('click', () => {
-                const isCurrentlyStudy = studyTimerContainer.style.display === 'block';
-                
-                studyTimerContainer.style.display = isCurrentlyStudy ? 'none' : 'block';
-                recordsContainer.style.display = isCurrentlyStudy ? 'block' : 'none';
-                
-                switchRecordsBtn.textContent = isCurrentlyStudy ? 'タイマーに戻る' : '記録を見る';
-                if (isCurrentlyStudy) {
-                    renderRecords();
+                if (currentTimerMode === 'records') {
+                    // 記録画面から戻る場合
+                    currentTimerMode = previousTimerMode;
+                } else {
+                    // CountdownとStudyをトグルする場合
+                    currentTimerMode = currentTimerMode === 'countdown' ? 'study' : 'countdown';
+                    if (currentTimerMode === 'study') resetStudyTimer();
                 }
+                
+                countdownContainer.style.display = currentTimerMode === 'countdown' ? 'block' : 'none';
+                studyTimerContainer.style.display = currentTimerMode === 'study' ? 'block' : 'none';
+                recordsContainer.style.display = 'none';
+
+                if (currentTimerMode === 'countdown') {
+                    switchBtn.textContent = '時間割タイマーへ';
+                    messageEl.classList.remove('subject-mode');
+                } else {
+                    switchBtn.textContent = '共通テストタイマーへ';
+                    messageEl.classList.add('subject-mode');
+                }
+                messageEl.style.fontSize = '';
             });
+
+            switchRecordsBtn.addEventListener('click', () => {
+                if (currentTimerMode !== 'records') {
+                    previousTimerMode = currentTimerMode; // 現在のモードを保存
+                }
+                currentTimerMode = 'records';
+                countdownContainer.style.display = 'none';
+                studyTimerContainer.style.display = 'none';
+                recordsContainer.style.display = 'block';
+                switchBtn.textContent = '戻る'; // ボタンのテキストを変更
+                renderRecords();
+            });
+            // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
 
             logListEl.addEventListener('click', (e) => {
                 if (e.target.classList.contains('del-btn')) {
@@ -604,29 +614,27 @@
                     currentProgramIndex = 0; completedRepeats = 0; updateStudyTimerDisplay(); completedRepeats = 1;
                     runningTime = programs[0].time * 1000;
                     expectedEndTime = Date.now() + runningTime;
-                    updateSubjectDisplay();
+                    updateRunningMessage();
                     timerInterval = setInterval(timerTick, 10);
                     btnStartPause.textContent = 'Pause'; btnStartPause.classList.add('toggled');
                 } else if (studyTimerState === 'running') {
                     studyTimerState = 'paused'; clearInterval(timerInterval);
                     runningTime = expectedEndTime - Date.now();
                     btnStartPause.textContent = 'Resume';
-                    updateSubjectDisplay(); // メッセージを更新
+                    updateRunningMessage(); // --- ▼▼▼ JS変更箇所 ▼▼▼ (Pause時にもメッセージを更新)
                 } else if (studyTimerState === 'paused') {
                     studyTimerState = 'running';
                     expectedEndTime = Date.now() + runningTime;
+                    updateRunningMessage(); // --- ▼▼▼ JS変更箇所 ▼▼▼ (Resume時にもメッセージを更新)
                     timerInterval = setInterval(timerTick, 10);
                     btnStartPause.textContent = 'Pause';
-                    updateSubjectDisplay(); // メッセージを更新
                 }
             });
         }
-        // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
 
         function initialize() {
             checkDailyReset();
             countdownContainer.style.display = 'block';
-            switchRecordsBtn.style.display = 'none'; // 最初は記録ボタンを隠す
             setInterval(updateCountdownTimer, 1);
             runMessageLoop();
             resetStudyTimer();
