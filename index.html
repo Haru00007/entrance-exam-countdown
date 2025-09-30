@@ -185,9 +185,7 @@
 
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         let currentTimerMode = 'countdown';
-        // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
         let previousTimerMode = 'countdown'; // 記録画面から戻るための状態保存
-        // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
         const messageEl = document.getElementById('message-area');
         const switchBtn = document.getElementById('switch-timer-btn');
         const countdownContainer = document.getElementById('countdown-container');
@@ -289,15 +287,23 @@
 
         function unlockAudio() {
             if (isAudioUnlocked) return;
-            chimeSound.volume = 0;
+            // ユーザーの操作に応じて初めて音声を再生しようとすると、ブラウザの自動再生ポリシーをクリアできる
+            chimeSound.volume = 0; // 一時的に音量を0にして再生
             chimeSound.play().then(() => {
-                chimeSound.pause(); chimeSound.currentTime = 0; chimeSound.volume = 1;
-                isAudioUnlocked = true; console.log("Audio unlocked successfully.");
+                // 再生に成功したら、すぐに停止して音量を元に戻す
+                chimeSound.pause();
+                chimeSound.currentTime = 0;
+                chimeSound.volume = 1;
+                isAudioUnlocked = true;
+                console.log("Audio unlocked successfully.");
             }).catch(error => console.error("Audio unlock failed:", error));
         }
         
         function playChime() {
-            if (!isAudioUnlocked) return;
+            if (!isAudioUnlocked) {
+                console.warn("Audio is not unlocked yet. Cannot play chime.");
+                return;
+            }
             chimeSound.pause();
             chimeSound.currentTime = 0;
             chimeSound.play().catch(error => console.error("音声の再生に失敗しました:", error));
@@ -329,13 +335,11 @@
             }
         }
 
-        // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
         function updateRunningMessage() {
             if (!['running', 'paused', 'finished'].includes(studyTimerState) || programs.length === 0) return;
 
             const currentProgram = programs[currentProgramIndex];
             
-            // 一時停止中の表示
             if (studyTimerState === 'paused') {
                 messageEl.textContent = `${currentProgram.subject} (Paused)`;
                 messageEl.style.fontSize = '';
@@ -344,7 +348,6 @@
 
             const endTimeFormatted = formatTime(expectedEndTime);
 
-            // 実行中の表示
             if (currentProgram.subject === "Break") {
                 const nextRep = (currentProgramIndex + 1 >= programs.length) ? (completedRepeats) : (completedRepeats - 1);
                 if (totalRepeats !== 0 && nextRep >= totalRepeats) {
@@ -360,7 +363,6 @@
                 messageEl.style.fontSize = '';
             }
         }
-        // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
         
         function timerTick() {
             runningTime = expectedEndTime - Date.now();
@@ -511,13 +513,11 @@
         }
 
         function setupEventListeners() {
-            // --- ▼▼▼ JS変更箇所 ▼▼▼ ---
             switchBtn.addEventListener('click', () => {
+                unlockAudio(); // ★修正箇所: ここで音声ロック解除を試みる
                 if (currentTimerMode === 'records') {
-                    // 記録画面から戻る場合
                     currentTimerMode = previousTimerMode;
                 } else {
-                    // CountdownとStudyをトグルする場合
                     currentTimerMode = currentTimerMode === 'countdown' ? 'study' : 'countdown';
                     if (currentTimerMode === 'study') resetStudyTimer();
                 }
@@ -537,17 +537,17 @@
             });
 
             switchRecordsBtn.addEventListener('click', () => {
+                unlockAudio(); // ★修正箇所: ここでも音声ロック解除を試みる
                 if (currentTimerMode !== 'records') {
-                    previousTimerMode = currentTimerMode; // 現在のモードを保存
+                    previousTimerMode = currentTimerMode; 
                 }
                 currentTimerMode = 'records';
                 countdownContainer.style.display = 'none';
                 studyTimerContainer.style.display = 'none';
                 recordsContainer.style.display = 'block';
-                switchBtn.textContent = '戻る'; // ボタンのテキストを変更
+                switchBtn.textContent = '戻る';
                 renderRecords();
             });
-            // --- ▲▲▲ JS変更箇所ここまで ▲▲▲
 
             logListEl.addEventListener('click', (e) => {
                 if (e.target.classList.contains('del-btn')) {
@@ -621,11 +621,11 @@
                     studyTimerState = 'paused'; clearInterval(timerInterval);
                     runningTime = expectedEndTime - Date.now();
                     btnStartPause.textContent = 'Resume';
-                    updateRunningMessage(); // --- ▼▼▼ JS変更箇所 ▼▼▼ (Pause時にもメッセージを更新)
+                    updateRunningMessage();
                 } else if (studyTimerState === 'paused') {
                     studyTimerState = 'running';
                     expectedEndTime = Date.now() + runningTime;
-                    updateRunningMessage(); // --- ▼▼▼ JS変更箇所 ▼▼▼ (Resume時にもメッセージを更新)
+                    updateRunningMessage();
                     timerInterval = setInterval(timerTick, 10);
                     btnStartPause.textContent = 'Pause';
                 }
