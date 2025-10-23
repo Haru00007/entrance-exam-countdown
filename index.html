@@ -164,22 +164,38 @@
             color: #0d0;
             line-height: 1.1;
         }
-        /* ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼ */
         .day-label {
             display: inline-block;
             cursor: pointer;
-            padding: 2px 0; /* 左右のパディングを削除 */
+            padding: 2px 0;
             border-radius: 2px;
-            width: 7ch; /* 幅を7文字分に固定 */
-            text-align: center; /* テキストを中央揃え */
+            width: 7ch;
+            text-align: center;
         }
-        /* ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲ */
         .day-label:hover {
             background-color: rgba(0, 255, 0, 0.1);
         }
         .day-label.active {
             color: orange;
             background-color: rgba(255, 165, 0, 0.1);
+        }
+        #graph-nav {
+            font-family: 'LED Calculator', sans-serif;
+            font-size: 12px;
+            color: #0d0;
+            text-align: center;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            white-space: pre;
+        }
+        .nav-arrow, #week-range-display {
+            cursor: pointer;
+            padding: 0 10px;
+        }
+        .nav-arrow:hover, #week-range-display:hover {
+            color: orange;
         }
     </style>
 </head>
@@ -222,6 +238,7 @@
             <div id="records-header">
                 <span id="records-title">Records</span>
                 <div id="graph-wrapper">
+                    <div id="graph-nav"></div>
                     <pre id="weekly-graph"></pre>
                     <div id="graph-x-axis"></div>
                 </div>
@@ -236,10 +253,7 @@
          * 1. グローバル設定・定数
          *******************************************************************/
         
-        // ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼
-        // デバッグ用のタイマー速度倍率 (1が通常速度、10なら10倍速)
         const DEBUG_SPEED_MULTIPLIER = 1; 
-        // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
         
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         let currentTimerMode = 'countdown';
@@ -262,6 +276,7 @@
         const recordsTitleEl = document.getElementById('records-title');
         const graphXAxisEl = document.getElementById('graph-x-axis');
         let filteredDayIndex = null;
+        let weekOffset = 0;
         
         /*******************************************************************
          * 2. 共通テストタイマー関連 (変更なし)
@@ -372,7 +387,12 @@
             let timeToShow = (studyTimerState === 'setting') ? settingTime * 1000 : runningTime;
             if (timeToShow < 0) timeToShow = 0;
             const totalSeconds = Math.floor(timeToShow / 1000), hours = Math.floor(totalSeconds / 3600), minutes = Math.floor((totalSeconds % 3600) / 60), seconds = totalSeconds % 60, hundredths = Math.floor((timeToShow % 1000) / 10);
-            studyDisplayEl.textContent = (showHundredths && totalSeconds < 60 && studyTimerState !== 'setting') ? `${String(seconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}` : `${String(minutes).padStart(2, '!')}:${String(seconds).padStart(2, '0')}`;
+
+            const minutesStr = (hours > 0) ? String(minutes).padStart(2, '0') : String(minutes).padStart(2, '!');
+            studyDisplayEl.textContent = (showHundredths && totalSeconds < 60 && studyTimerState !== 'setting') 
+                ? `${String(seconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}` 
+                : `${minutesStr}:${String(seconds).padStart(2, '0')}`;
+
             studyRepeatsCompletedEl.textContent = (hours > 0) ? String(hours).padStart(2, '!') : '!!';
             let displayRepeats;
             if (studyTimerState === 'setting') {
@@ -421,7 +441,6 @@
             if (runningTime <= 0) {
                 const finishedProgram = programs[currentProgramIndex];
                 if (finishedProgram.subject !== 'Break') {
-                    // Note: For accelerated timer, startTime can be inaccurate. This is acceptable for debug purposes.
                     const startTime = expectedEndTime - (finishedProgram.time * 1000 / DEBUG_SPEED_MULTIPLIER);
                     addRecord(startTime, expectedEndTime, finishedProgram.subject);
                 }
@@ -482,6 +501,11 @@
         const subjectAbbreviations = { "Modern-Japanese": "M-JPN. ", "Old-Japanese": "O-JPN. ", "Old-Chinese": "O-CHN. ", "Mathematics": "Math.  ", "English": "ENG.   ", "Japan History": "J-Hist.", "World History": "W-Hist.", "Geography": "Geo.   ", "Physics": "Phy.   ", "Biology": "Bio.   ", "Science": "Sci.   ", "Information": "Info.  ", };
         const formatTime = (timestamp) => { const d = new Date(timestamp); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
         const formatDuration = (ms) => { if (ms <= 0) return '0h00m'; const totalMins = Math.round(ms / 60000); const hours = Math.floor(totalMins / 60); const mins = totalMins % 60; return `${hours}h${String(mins).padStart(2, '0')}m`; };
+        const formatGraphDate = d => {
+            const m = String(d.getMonth() + 1);
+            const day = String(d.getDate());
+            return `${m.padStart(2, ' ')}-${day.padStart(2, ' ')}`;
+        };
         const loadRecords = () => JSON.parse(localStorage.getItem('studyRecords') || '[]');
         const saveRecords = (records) => localStorage.setItem('studyRecords', JSON.stringify(records));
 
@@ -524,8 +548,11 @@
 
         function renderWeeklyGraph() {
             const graphEl = document.getElementById('weekly-graph');
+            const graphNavEl = document.getElementById('graph-nav');
             const records = loadRecords();
+            
             const today = new Date();
+            today.setDate(today.getDate() + (weekOffset * 7));
             
             const dayOfWeek = today.getDay();
             const diffToMonday = (dayOfWeek === 0) ? -6 : 1 - dayOfWeek;
@@ -535,6 +562,14 @@
             const sunday = new Date(monday);
             sunday.setDate(monday.getDate() + 6);
             sunday.setHours(23, 59, 59, 999);
+            
+            // ▼▼▼▼▼ 変更箇所 (イベントリスナーの追加を削除) ▼▼▼▼▼
+            graphNavEl.innerHTML = `
+                <span class="nav-arrow" id="prev-week-btn">&lt;-</span>
+                <span id="week-range-display">${formatGraphDate(monday)} - ${formatGraphDate(sunday)}</span>
+                <span class="nav-arrow" id="next-week-btn">-&gt;</span>
+            `;
+            // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
 
             const dailyTotals = Array(7).fill(0);
             for (const record of records) {
@@ -545,7 +580,7 @@
                 }
             }
 
-            const maxMs = Math.max(...dailyTotals);
+            const maxMs = Math.max(...dailyTotals, 1);
             const maxHours = maxMs / 3600000;
             let yAxisMaxHours = (maxHours > 0) ? Math.ceil(maxHours / 2) * 2 : 2;
             if (yAxisMaxHours > 16) yAxisMaxHours = 16;
@@ -554,21 +589,12 @@
             const lines = [];
             const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-            const formatDate = d => `${d.getMonth()+1}-${d.getDate()}`;
-            const title = `${formatDate(monday)} - ${formatDate(sunday)}`.padStart(34, ' ');
-            lines.push(title);
-
             for (let i = GRAPH_HEIGHT; i >= 0; i--) {
                 let line = '';
                 const currentLineHour = (i / GRAPH_HEIGHT) * yAxisMaxHours;
 
                 if (i % 4 === 0) {
-                    let labelText;
-                    if (currentLineHour % 1 === 0) {
-                        labelText = `${currentLineHour}h`;
-                    } else {
-                        labelText = `${currentLineHour}`;
-                    }
+                    let labelText = `${currentLineHour}h`;
                     line += labelText.padEnd(3, ' ') + '|';
                 } else {
                     line += '   |';
@@ -590,10 +616,9 @@
             }
             graphEl.textContent = lines.join('\n');
 
-            // ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼
             graphXAxisEl.innerHTML = '';
             const labelsContainer = document.createElement('div');
-            labelsContainer.textContent = '    '; // Y軸ラベル部分のオフセット
+            labelsContainer.textContent = '    ';
             dayLabels.forEach((label, index) => {
                 const labelSpan = document.createElement('span');
                 labelSpan.textContent = label;
@@ -604,23 +629,24 @@
                 labelSpan.dataset.dayIndex = index;
                 labelSpan.addEventListener('click', () => handleDayClick(index));
                 labelsContainer.appendChild(labelSpan);
-                // スペーサーはCSSで幅を確保したため不要になりました
             });
             graphXAxisEl.appendChild(labelsContainer);
-            // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
         }
 
         function renderRecords() {
             const records = loadRecords();
             logListEl.innerHTML = '';
-            let recordsToDisplay = records;
             
             const today = new Date();
+            today.setDate(today.getDate() + (weekOffset * 7));
+            
             const dayOfWeek = today.getDay();
             const diffToMonday = (dayOfWeek === 0) ? -6 : 1 - dayOfWeek;
             const monday = new Date(today);
             monday.setDate(today.getDate() + diffToMonday);
             monday.setHours(0, 0, 0, 0);
+
+            let recordsToDisplay = records;
 
             if (filteredDayIndex !== null) {
                 const targetDate = new Date(monday);
@@ -635,12 +661,20 @@
                     return recordDate.getFullYear() === year && recordDate.getMonth() === month && recordDate.getDate() === date;
                 });
             } else {
-                recordsTitleEl.textContent = 'Records';
+                 recordsTitleEl.textContent = (weekOffset === 0) ? 'This Week Records' : 'Records';
             }
 
             const subjectTotals = {};
             let grandTotal = 0;
             for (const record of recordsToDisplay) {
+                const recordDate = new Date(record.startTime);
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+                sunday.setHours(23, 59, 59, 999);
+                if (filteredDayIndex === null && (recordDate < monday || recordDate > sunday)) {
+                    continue;
+                }
+
                 const duration = record.endTime - record.startTime;
                 grandTotal += duration;
                 subjectTotals[record.subject] = (subjectTotals[record.subject] || 0) + duration;
@@ -661,7 +695,9 @@
                 }
             }
             summaryText += '-------------------------------------\n';
-            summaryText += `Total  |${formatDuration(grandTotal)}`;
+            summaryText += `Total  |${formatDuration(grandTotal)}\n`;
+            const weeklyAverage = grandTotal / 7;
+            summaryText += `Avg.   |${formatDuration(weeklyAverage)}`;
             subjectSummaryEl.textContent = summaryText;
 
             renderWeeklyGraph();
@@ -684,6 +720,51 @@
             element.addEventListener('touchstart', startAction);
             element.addEventListener('touchend', stopAction);
         }
+        
+        // ▼▼▼▼▼ 追加箇所 (グラフナビゲーションの連続操作機能) ▼▼▼▼▼
+        function setupGraphNavControls() {
+            const graphNavEl = document.getElementById('graph-nav');
+            let navTimeoutId, navIntervalId;
+
+            const handleNav = (direction) => {
+                if (direction === 0) { // 現在週に戻る
+                    weekOffset = 0;
+                } else {
+                    weekOffset += direction;
+                }
+                renderRecords();
+            };
+
+            const startNavAction = (e) => {
+                e.preventDefault();
+                let direction = 0;
+                if (e.target.id === 'prev-week-btn') direction = -1;
+                if (e.target.id === 'next-week-btn') direction = 1;
+                if (e.target.id === 'week-range-display') {
+                    handleNav(0); // 日付部分クリックで現在週へ
+                    return;
+                }
+
+                if (direction !== 0) {
+                    handleNav(direction);
+                    navTimeoutId = setTimeout(() => {
+                        navIntervalId = setInterval(() => handleNav(direction), 100);
+                    }, 500);
+                }
+            };
+
+            const stopNavAction = () => {
+                clearTimeout(navTimeoutId);
+                clearInterval(navIntervalId);
+            };
+
+            graphNavEl.addEventListener('mousedown', startNavAction);
+            graphNavEl.addEventListener('mouseup', stopNavAction);
+            graphNavEl.addEventListener('mouseleave', stopNavAction);
+            graphNavEl.addEventListener('touchstart', startNavAction, { passive: false });
+            graphNavEl.addEventListener('touchend', stopNavAction);
+        }
+        // ▲▲▲▲▲ 追加箇所 ▲▲▲▲▲
 
         function setupEventListeners() {
             switchBtn.addEventListener('click', () => {
@@ -720,6 +801,7 @@
                 recordsContainer.style.display = 'block';
                 switchBtn.textContent = '戻る';
                 filteredDayIndex = null;
+                weekOffset = 0;
                 renderRecords();
             });
 
@@ -739,18 +821,24 @@
             makeButtonAccelerate(document.getElementById('btn-repeat-plus'), () => handleRepeatChange(1));
             makeButtonAccelerate(document.getElementById('btn-repeat-minus'), () => handleRepeatChange(-1));
             
+            // ▼▼▼▼▼ 変更箇所 (教科送りボタンのイベントリスナー) ▼▼▼▼▼
+            const nextSubjectAction = () => {
+                if (studyTimerState !== 'setting' || isSettingProgram) return;
+                currentSubjectIndex = (currentSubjectIndex + 1) % subjects.length;
+                updateSubjectDisplay();
+            };
+            const prevSubjectAction = () => {
+                if (studyTimerState !== 'setting' || isSettingProgram) return;
+                currentSubjectIndex = (currentSubjectIndex - 1 + subjects.length) % subjects.length;
+                updateSubjectDisplay();
+            };
+            makeButtonAccelerate(document.getElementById('btn-next-subject'), nextSubjectAction);
+            makeButtonAccelerate(document.getElementById('btn-prev-subject'), prevSubjectAction);
+            // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
+
             document.getElementById('btn-reset').addEventListener('click', resetStudyTimer);
             btnShow100s.addEventListener('click', () => {
                 showHundredths = !showHundredths; btnShow100s.classList.toggle('toggled', showHundredths); updateStudyTimerDisplay();
-            });
-
-            document.getElementById('btn-next-subject').addEventListener('click', () => {
-                if (studyTimerState !== 'setting' || isSettingProgram) return;
-                currentSubjectIndex = (currentSubjectIndex + 1) % subjects.length; updateSubjectDisplay();
-            });
-            document.getElementById('btn-prev-subject').addEventListener('click', () => {
-                if (studyTimerState !== 'setting' || isSettingProgram) return;
-                currentSubjectIndex = (currentSubjectIndex - 1 + subjects.length) % subjects.length; updateSubjectDisplay();
             });
             
             document.getElementById('btn-pset').addEventListener('click', async () => {
@@ -787,9 +875,7 @@
                     studyTimerState = 'running';
                     currentProgramIndex = 0; completedRepeats = 0; updateStudyTimerDisplay(); completedRepeats = 1;
                     runningTime = programs[0].time * 1000;
-                    // ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼
                     expectedEndTime = Date.now() + (runningTime / DEBUG_SPEED_MULTIPLIER);
-                    // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
                     updateRunningMessage();
                     timerInterval = setInterval(timerTick, 10);
                     btnStartPause.textContent = 'Pause'; btnStartPause.classList.add('toggled');
@@ -800,12 +886,7 @@
                     updateRunningMessage();
                 } else if (studyTimerState === 'paused') {
                     studyTimerState = 'running';
-                    // ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼
-                    expectedEndTime = Date.now() + (runningTime * DEBUG_SPEED_MULTIPLIER); 
-                    expectedEndTime = Date.now() + runningTime; 
-                    expectedEndTime = Date.now() + (runningTime); 
                     expectedEndTime = Date.now() + runningTime;
-                    // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
                     updateRunningMessage();
                     timerInterval = setInterval(timerTick, 10);
                     btnStartPause.textContent = 'Pause';
@@ -820,6 +901,9 @@
             runMessageLoop();
             resetStudyTimer();
             setupEventListeners();
+            // ▼▼▼▼▼ 追加箇所 ▼▼▼▼▼
+            setupGraphNavControls(); // グラフナビゲーションのイベントリスナーを一度だけ設定
+            // ▲▲▲▲▲ 追加箇所 ▲▲▲▲▲
         }
         
         initialize();
