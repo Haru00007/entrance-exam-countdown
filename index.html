@@ -594,7 +594,12 @@
                 const currentLineHour = (i / GRAPH_HEIGHT) * yAxisMaxHours;
 
                 if (i % 4 === 0) {
-                    let labelText = `${currentLineHour}h`;
+                    let labelText;
+                    if (currentLineHour % 1 === 0) {
+                        labelText = `${currentLineHour}h`;
+                    } else {
+                        labelText = `${currentLineHour}`;
+                    }
                     line += labelText.padEnd(3, ' ') + '|';
                 } else {
                     line += '   |';
@@ -726,43 +731,53 @@
             const graphNavEl = document.getElementById('graph-nav');
             let navTimeoutId, navIntervalId;
 
-            const handleNav = (direction) => {
-                if (direction === 0) { // 現在週に戻る
-                    weekOffset = 0;
-                } else {
-                    weekOffset += direction;
-                }
-                renderRecords();
-            };
-
-            const startNavAction = (e) => {
-                e.preventDefault();
-                let direction = 0;
-                if (e.target.id === 'prev-week-btn') direction = -1;
-                if (e.target.id === 'next-week-btn') direction = 1;
-                if (e.target.id === 'week-range-display') {
-                    handleNav(0); // 日付部分クリックで現在週へ
-                    return;
-                }
-
-                if (direction !== 0) {
-                    handleNav(direction);
-                    navTimeoutId = setTimeout(() => {
-                        navIntervalId = setInterval(() => handleNav(direction), 100);
-                    }, 500);
-                }
-            };
-
+            // ボタンを離した時に実行する処理
             const stopNavAction = () => {
                 clearTimeout(navTimeoutId);
                 clearInterval(navIntervalId);
+                // windowに追加したイベントリスナーを必ず削除する
+                window.removeEventListener('mouseup', stopNavAction);
+                window.removeEventListener('touchend', stopNavAction);
             };
 
+            // ボタンを押し始めた時に実行する処理
+            const startNavAction = (e) => {
+                // 日付範囲をクリックした場合は、現在週に戻るだけ
+                if (e.target.id === 'week-range-display') {
+                    weekOffset = 0;
+                    renderRecords();
+                    return;
+                }
+                // 矢印（<- or ->）以外で発動しないようにする
+                if (!e.target.classList.contains('nav-arrow')) {
+                    return;
+                }
+                
+                e.preventDefault();
+                
+                const direction = (e.target.id === 'prev-week-btn') ? -1 : 1;
+                
+                const handleNav = (dir) => {
+                    weekOffset += dir;
+                    renderRecords();
+                };
+
+                // 1. まず1回だけ動かす
+                handleNav(direction);
+
+                // 2. 押し続けた場合の連続動作を設定
+                navTimeoutId = setTimeout(() => {
+                    navIntervalId = setInterval(() => handleNav(direction), 100);
+                }, 500);
+
+                // 3. ボタンを離したことを検知するため、windowにリスナーを追加
+                window.addEventListener('mouseup', stopNavAction);
+                window.addEventListener('touchend', stopNavAction);
+            };
+
+            // イベントリスナーを設定
             graphNavEl.addEventListener('mousedown', startNavAction);
-            graphNavEl.addEventListener('mouseup', stopNavAction);
-            graphNavEl.addEventListener('mouseleave', stopNavAction);
             graphNavEl.addEventListener('touchstart', startNavAction, { passive: false });
-            graphNavEl.addEventListener('touchend', stopNavAction);
         }
         // ▲▲▲▲▲ 追加箇所 ▲▲▲▲▲
 
