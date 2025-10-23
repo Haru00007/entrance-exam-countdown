@@ -164,12 +164,16 @@
             color: #0d0;
             line-height: 1.1;
         }
+        /* ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼ */
         .day-label {
             display: inline-block;
             cursor: pointer;
-            padding: 2px 8px;
+            padding: 2px 0; /* 左右のパディングを削除 */
             border-radius: 2px;
+            width: 7ch; /* 幅を7文字分に固定 */
+            text-align: center; /* テキストを中央揃え */
         }
+        /* ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲ */
         .day-label:hover {
             background-color: rgba(0, 255, 0, 0.1);
         }
@@ -231,7 +235,12 @@
         /*******************************************************************
          * 1. グローバル設定・定数
          *******************************************************************/
-
+        
+        // ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼
+        // デバッグ用のタイマー速度倍率 (1が通常速度、10なら10倍速)
+        const DEBUG_SPEED_MULTIPLIER = 1; 
+        // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
+        
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         let currentTimerMode = 'countdown';
         let previousTimerMode = 'countdown';
@@ -412,8 +421,9 @@
             if (runningTime <= 0) {
                 const finishedProgram = programs[currentProgramIndex];
                 if (finishedProgram.subject !== 'Break') {
-                    const endTime = expectedEndTime > Date.now() ? Date.now() : expectedEndTime;
-                    addRecord(endTime - (finishedProgram.time * 1000), endTime, finishedProgram.subject);
+                    // Note: For accelerated timer, startTime can be inaccurate. This is acceptable for debug purposes.
+                    const startTime = expectedEndTime - (finishedProgram.time * 1000 / DEBUG_SPEED_MULTIPLIER);
+                    addRecord(startTime, expectedEndTime, finishedProgram.subject);
                 }
                 playChime();
                 currentProgramIndex++;
@@ -428,7 +438,7 @@
                 }
                 if (studyTimerState !== 'finished') {
                     runningTime = programs[currentProgramIndex].time * 1000;
-                    expectedEndTime = Date.now() + runningTime;
+                    expectedEndTime = Date.now() + (runningTime / DEBUG_SPEED_MULTIPLIER);
                     updateRunningMessage();
                 }
             }
@@ -580,9 +590,10 @@
             }
             graphEl.textContent = lines.join('\n');
 
+            // ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼
             graphXAxisEl.innerHTML = '';
             const labelsContainer = document.createElement('div');
-            labelsContainer.textContent = '    ';
+            labelsContainer.textContent = '    '; // Y軸ラベル部分のオフセット
             dayLabels.forEach((label, index) => {
                 const labelSpan = document.createElement('span');
                 labelSpan.textContent = label;
@@ -593,15 +604,10 @@
                 labelSpan.dataset.dayIndex = index;
                 labelSpan.addEventListener('click', () => handleDayClick(index));
                 labelsContainer.appendChild(labelSpan);
-                if (index < dayLabels.length - 1) {
-                   const spacer = document.createElement('span');
-                   // ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼
-                   spacer.textContent = '      '; // スペーサーのスペースを増やしました
-                   // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
-                   labelsContainer.appendChild(spacer);
-                }
+                // スペーサーはCSSで幅を確保したため不要になりました
             });
             graphXAxisEl.appendChild(labelsContainer);
+            // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
         }
 
         function renderRecords() {
@@ -781,7 +787,9 @@
                     studyTimerState = 'running';
                     currentProgramIndex = 0; completedRepeats = 0; updateStudyTimerDisplay(); completedRepeats = 1;
                     runningTime = programs[0].time * 1000;
-                    expectedEndTime = Date.now() + runningTime;
+                    // ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼
+                    expectedEndTime = Date.now() + (runningTime / DEBUG_SPEED_MULTIPLIER);
+                    // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
                     updateRunningMessage();
                     timerInterval = setInterval(timerTick, 10);
                     btnStartPause.textContent = 'Pause'; btnStartPause.classList.add('toggled');
@@ -792,7 +800,12 @@
                     updateRunningMessage();
                 } else if (studyTimerState === 'paused') {
                     studyTimerState = 'running';
+                    // ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼
+                    expectedEndTime = Date.now() + (runningTime * DEBUG_SPEED_MULTIPLIER); 
+                    expectedEndTime = Date.now() + runningTime; 
+                    expectedEndTime = Date.now() + (runningTime); 
                     expectedEndTime = Date.now() + runningTime;
+                    // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
                     updateRunningMessage();
                     timerInterval = setInterval(timerTick, 10);
                     btnStartPause.textContent = 'Pause';
