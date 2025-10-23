@@ -193,7 +193,7 @@
                 <div id="countdown-dh-labels"><span id="day-label" class="label-unit">Days</span><span class="space"></span><span id="hour-label" class="label-unit">Hours</span><span class="space"></span><span id="msec-label" class="label-unit">ms</span></div>
             </div>
             <div class="current-time">
-                <div id="current-date"><span id="year" data-placeholder="8888">2025</span>-<span id="month" data-placeholder="88">09</span>-<span id="date" data-placeholder="88">22</span><span class="dseg14" id="day-of-week" data-placeholder="~~~">MON</span></div>
+                <div id="current-date"><span id="year" data-placeholder="8888">2025</span>-<span id="month" data-placeholder="88">09</span>-<span id="date" data-placeholder="88">22</span><span class="dseg14" id="day-of-week" data-placeholder="***">MON</span></div>
                 <div id="current-hms"><span id="current-hour" data-placeholder="88">21</span>:<span id="current-min" data-placeholder="88">25</span>:<span id="current-sec" data-placeholder="88">15</span>.<span id="current-msec" data-placeholder="8">0</span></div>
             </div>
         </div>
@@ -595,7 +595,9 @@
                 labelsContainer.appendChild(labelSpan);
                 if (index < dayLabels.length - 1) {
                    const spacer = document.createElement('span');
-                   spacer.textContent = ' ';
+                   // ▼▼▼▼▼ 変更箇所 ▼▼▼▼▼
+                   spacer.textContent = '      '; // スペーサーのスペースを増やしました
+                   // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
                    labelsContainer.appendChild(spacer);
                 }
             });
