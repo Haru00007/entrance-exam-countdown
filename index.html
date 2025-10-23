@@ -193,6 +193,14 @@
         .nav-arrow, #week-range-display {
             cursor: pointer;
             padding: 0 10px;
+            .nav-arrow, #week-range-display {
+            cursor: pointer;
+            padding: 0 10px;
+            /* ▼▼▼▼▼ 以下3行を追加 ▼▼▼▼▼ */
+            -webkit-user-select: none; /* Safari, Chrome */
+            user-select: none;
+            -webkit-tap-highlight-color: transparent; /* タップ時のハイライトを消す */
+            }
         }
         .nav-arrow:hover, #week-range-display:hover {
             color: orange;
@@ -731,13 +739,14 @@
             const graphNavEl = document.getElementById('graph-nav');
             let navTimeoutId, navIntervalId;
 
-            // ボタンを離した時に実行する処理
+            // ボタンを離した時、または操作がキャンセルされた時に実行する処理
             const stopNavAction = () => {
                 clearTimeout(navTimeoutId);
                 clearInterval(navIntervalId);
                 // windowに追加したイベントリスナーを必ず削除する
                 window.removeEventListener('mouseup', stopNavAction);
                 window.removeEventListener('touchend', stopNavAction);
+                window.removeEventListener('touchcancel', stopNavAction); // ▼▼▼ 変更箇所 ▼▼▼
             };
 
             // ボタンを押し始めた時に実行する処理
@@ -770,9 +779,10 @@
                     navIntervalId = setInterval(() => handleNav(direction), 100);
                 }, 500);
 
-                // 3. ボタンを離したことを検知するため、windowにリスナーを追加
+                // 3. ボタンを離したことなどを検知するため、windowにリスナーを追加
                 window.addEventListener('mouseup', stopNavAction);
                 window.addEventListener('touchend', stopNavAction);
+                window.addEventListener('touchcancel', stopNavAction); // ▼▼▼ 変更箇所 ▼▼▼
             };
 
             // イベントリスナーを設定
