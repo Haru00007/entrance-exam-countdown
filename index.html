@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>タイマー</title>
     <style>
-        /* (CSSに変更はありません) */
         @font-face {
             font-family: 'DSEG7 Classic'; src: url('./fonts/DSEG7Classic-Bold.woff2') format('woff2');
             font-weight: bold; font-style: normal;
@@ -133,11 +132,55 @@
             font-size: 16px;
             margin: 0;
         }
+        #records-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        #records-title {
+            font-size: 20px;
+            margin-top: 10px;
+        }
+        #graph-wrapper {
+            display: flex;
+            flex-direction: column;
+        }
+        #weekly-graph {
+            font-family: 'LED Calculator', sans-serif;
+            white-space: pre;
+            font-size: 12px;
+            margin: 0;
+            text-align: left;
+            margin-bottom: -5px;
+            line-height: 1.0;
+            color: #0d0;
+        }
+        #graph-x-axis {
+            font-family: 'LED Calculator', sans-serif;
+            font-size: 12px;
+            white-space: pre;
+            color: #0d0;
+            line-height: 1.1;
+        }
+        .day-label {
+            display: inline-block;
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 2px;
+        }
+        .day-label:hover {
+            background-color: rgba(0, 255, 0, 0.1);
+        }
+        .day-label.active {
+            color: orange;
+            background-color: rgba(255, 165, 0, 0.1);
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- (HTMLは変更なし) -->
         <div id="message-area"></div>
         <div id="switch-button-area">
             <button id="switch-timer-btn" class="switch-btn">時間割タイマーへ</button>
@@ -150,7 +193,7 @@
                 <div id="countdown-dh-labels"><span id="day-label" class="label-unit">Days</span><span class="space"></span><span id="hour-label" class="label-unit">Hours</span><span class="space"></span><span id="msec-label" class="label-unit">ms</span></div>
             </div>
             <div class="current-time">
-                <div id="current-date"><span id="year" data-placeholder="8888">2025</span>-<span id="month" data-placeholder="88">09</span>-<span id="date" data-placeholder="88">22</span><span class="dseg14" id="day-of-week" data-placeholder="***">MON</span></div>
+                <div id="current-date"><span id="year" data-placeholder="8888">2025</span>-<span id="month" data-placeholder="88">09</span>-<span id="date" data-placeholder="88">22</span><span class="dseg14" id="day-of-week" data-placeholder="~~~">MON</span></div>
                 <div id="current-hms"><span id="current-hour" data-placeholder="88">21</span>:<span id="current-min" data-placeholder="88">25</span>:<span id="current-sec" data-placeholder="88">15</span>.<span id="current-msec" data-placeholder="8">0</span></div>
             </div>
         </div>
@@ -172,7 +215,13 @@
             </div>
         </div>
         <div id="records-container" class="timer-mode-container">
-            <div>Records</div>
+            <div id="records-header">
+                <span id="records-title">Records</span>
+                <div id="graph-wrapper">
+                    <pre id="weekly-graph"></pre>
+                    <div id="graph-x-axis"></div>
+                </div>
+            </div>
             <div id="log-list"></div>
             <pre id="subject-summary"></pre>
         </div>
@@ -185,7 +234,7 @@
 
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         let currentTimerMode = 'countdown';
-        let previousTimerMode = 'countdown'; // 記録画面から戻るための状態保存
+        let previousTimerMode = 'countdown';
         const messageEl = document.getElementById('message-area');
         const switchBtn = document.getElementById('switch-timer-btn');
         const countdownContainer = document.getElementById('countdown-container');
@@ -201,6 +250,9 @@
         const recordsContainer = document.getElementById('records-container');
         const logListEl = document.getElementById('log-list');
         const subjectSummaryEl = document.getElementById('subject-summary');
+        const recordsTitleEl = document.getElementById('records-title');
+        const graphXAxisEl = document.getElementById('graph-x-axis');
+        let filteredDayIndex = null;
         
         /*******************************************************************
          * 2. 共通テストタイマー関連 (変更なし)
@@ -287,10 +339,8 @@
 
         function unlockAudio() {
             if (isAudioUnlocked) return;
-            // ユーザーの操作に応じて初めて音声を再生しようとすると、ブラウザの自動再生ポリシーをクリアできる
-            chimeSound.volume = 0; // 一時的に音量を0にして再生
+            chimeSound.volume = 0;
             chimeSound.play().then(() => {
-                // 再生に成功したら、すぐに停止して音量を元に戻す
                 chimeSound.pause();
                 chimeSound.currentTime = 0;
                 chimeSound.volume = 1;
@@ -312,21 +362,20 @@
         function updateStudyTimerDisplay() {
             let timeToShow = (studyTimerState === 'setting') ? settingTime * 1000 : runningTime;
             if (timeToShow < 0) timeToShow = 0;
-            const totalSeconds = Math.floor(timeToShow / 1000), minutes = Math.floor(totalSeconds / 60), seconds = totalSeconds % 60, hundredths = Math.floor((timeToShow % 1000) / 10);
+            const totalSeconds = Math.floor(timeToShow / 1000), hours = Math.floor(totalSeconds / 3600), minutes = Math.floor((totalSeconds % 3600) / 60), seconds = totalSeconds % 60, hundredths = Math.floor((timeToShow % 1000) / 10);
             studyDisplayEl.textContent = (showHundredths && totalSeconds < 60 && studyTimerState !== 'setting') ? `${String(seconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}` : `${String(minutes).padStart(2, '!')}:${String(seconds).padStart(2, '0')}`;
+            studyRepeatsCompletedEl.textContent = (hours > 0) ? String(hours).padStart(2, '!') : '!!';
+            let displayRepeats;
+            if (studyTimerState === 'setting') {
+                displayRepeats = totalRepeats;
+            } else {
+                displayRepeats = (totalRepeats !== 0 && completedRepeats > totalRepeats) ? totalRepeats : completedRepeats;
+            }
+            studyRepeatsTotalEl.textContent = String(displayRepeats).padStart(3, '!');
             let programNumberToShow = (studyTimerState === 'setting') ? programs.length + 1 : currentProgramIndex + 1;
             const programNumberDigits = String(programNumberToShow).padStart(2, '0');
-            let displayRepeats = (totalRepeats !== 0 && completedRepeats > totalRepeats) ? totalRepeats : completedRepeats;
-            studyRepeatsTotalEl.textContent = String(totalRepeats).padStart(3, '!');
-            if (displayRepeats >= 100) {
-                const hundreds = Math.floor(displayRepeats / 100) % 10, tens = Math.floor(displayRepeats / 10) % 10, ones = displayRepeats % 10;
-                studyRepeatsCompletedEl.textContent = `${hundreds}${tens}`;
-                studyProgramNumberEl.innerHTML = `<span style="color:red;">${ones}</span>${programNumberDigits}`;
-            } else {
-                studyRepeatsCompletedEl.textContent = totalRepeats === 0 ? '!!' : String(displayRepeats).padStart(2, '!');
-                studyProgramNumberEl.innerHTML = '';
-                studyProgramNumberEl.textContent = `P${programNumberDigits}`;
-            }
+            studyProgramNumberEl.innerHTML = '';
+            studyProgramNumberEl.textContent = `P${programNumberDigits}`;
         }
         
         function updateSubjectDisplay() {
@@ -337,17 +386,11 @@
 
         function updateRunningMessage() {
             if (!['running', 'paused', 'finished'].includes(studyTimerState) || programs.length === 0) return;
-
             const currentProgram = programs[currentProgramIndex];
-            
             if (studyTimerState === 'paused') {
-                messageEl.textContent = `${currentProgram.subject} (Paused)`;
-                messageEl.style.fontSize = '';
-                return;
+                messageEl.textContent = `${currentProgram.subject} (Paused)`; messageEl.style.fontSize = ''; return;
             }
-
             const endTimeFormatted = formatTime(expectedEndTime);
-
             if (currentProgram.subject === "Break") {
                 const nextRep = (currentProgramIndex + 1 >= programs.length) ? (completedRepeats) : (completedRepeats - 1);
                 if (totalRepeats !== 0 && nextRep >= totalRepeats) {
@@ -378,14 +421,9 @@
                     currentProgramIndex = 0;
                     completedRepeats++;
                     if (totalRepeats !== 0 && completedRepeats >= totalRepeats) {
-                        studyTimerState = 'finished';
-                        clearInterval(timerInterval);
-                        runningTime = 0;
-                        messageEl.textContent = 'Your work is finished today!';
-                        messageEl.style.fontSize = '';
-                        btnStartPause.textContent = 'Finished';
-                        updateStudyTimerDisplay();
-                        return;
+                        studyTimerState = 'finished'; clearInterval(timerInterval); runningTime = 0;
+                        messageEl.textContent = 'Your work is finished today!'; messageEl.style.fontSize = '';
+                        btnStartPause.textContent = 'Finished'; updateStudyTimerDisplay(); return;
                     }
                 }
                 if (studyTimerState !== 'finished') {
@@ -400,8 +438,8 @@
         function handleTimeChange(seconds) {
             if (studyTimerState !== 'setting' || isSettingProgram) return;
             settingTime += seconds;
+            if (settingTime > 359999) settingTime = 359999;
             if (settingTime < 0) settingTime = 0;
-            if (settingTime > 5999) settingTime = 5999;
             updateStudyTimerDisplay();
         }
 
@@ -428,7 +466,7 @@
         }
         
         /*******************************************************************
-         * 6. 記録機能関連 (変更なし)
+         * 6. 記録機能関連
          *******************************************************************/
 
         const subjectAbbreviations = { "Modern-Japanese": "M-JPN. ", "Old-Japanese": "O-JPN. ", "Old-Chinese": "O-CHN. ", "Mathematics": "Math.  ", "English": "ENG.   ", "Japan History": "J-Hist.", "World History": "W-Hist.", "Geography": "Geo.   ", "Physics": "Phy.   ", "Biology": "Bio.   ", "Science": "Sci.   ", "Information": "Info.  ", };
@@ -465,12 +503,136 @@
             renderRecords();
         }
 
+        function handleDayClick(dayIndex) {
+            if (filteredDayIndex === dayIndex) {
+                filteredDayIndex = null;
+            } else {
+                filteredDayIndex = dayIndex;
+            }
+            renderRecords();
+        }
+
+        function renderWeeklyGraph() {
+            const graphEl = document.getElementById('weekly-graph');
+            const records = loadRecords();
+            const today = new Date();
+            
+            const dayOfWeek = today.getDay();
+            const diffToMonday = (dayOfWeek === 0) ? -6 : 1 - dayOfWeek;
+            const monday = new Date(today);
+            monday.setDate(today.getDate() + diffToMonday);
+            monday.setHours(0, 0, 0, 0);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23, 59, 59, 999);
+
+            const dailyTotals = Array(7).fill(0);
+            for (const record of records) {
+                const recordDate = new Date(record.startTime);
+                if (recordDate >= monday && recordDate <= sunday) {
+                    const recordDayIndex = (recordDate.getDay() + 6) % 7;
+                    dailyTotals[recordDayIndex] += (record.endTime - record.startTime);
+                }
+            }
+
+            const maxMs = Math.max(...dailyTotals);
+            const maxHours = maxMs / 3600000;
+            let yAxisMaxHours = (maxHours > 0) ? Math.ceil(maxHours / 2) * 2 : 2;
+            if (yAxisMaxHours > 16) yAxisMaxHours = 16;
+
+            const GRAPH_HEIGHT = 16;
+            const lines = [];
+            const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+            const formatDate = d => `${d.getMonth()+1}-${d.getDate()}`;
+            const title = `${formatDate(monday)} - ${formatDate(sunday)}`.padStart(34, ' ');
+            lines.push(title);
+
+            for (let i = GRAPH_HEIGHT; i >= 0; i--) {
+                let line = '';
+                const currentLineHour = (i / GRAPH_HEIGHT) * yAxisMaxHours;
+
+                if (i % 4 === 0) {
+                    let labelText;
+                    if (currentLineHour % 1 === 0) {
+                        labelText = `${currentLineHour}h`;
+                    } else {
+                        labelText = `${currentLineHour}`;
+                    }
+                    line += labelText.padEnd(3, ' ') + '|';
+                } else {
+                    line += '   |';
+                }
+                
+                if (i === 0) {
+                    line += '-'.repeat(49);
+                } else {
+                    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+                        const dayHours = dailyTotals[dayIndex] / 3600000;
+                        if (dayHours >= currentLineHour) {
+                            line += '   -   ';
+                        } else {
+                            line += '       ';
+                        }
+                    }
+                }
+                lines.push(line);
+            }
+            graphEl.textContent = lines.join('\n');
+
+            graphXAxisEl.innerHTML = '';
+            const labelsContainer = document.createElement('div');
+            labelsContainer.textContent = '    ';
+            dayLabels.forEach((label, index) => {
+                const labelSpan = document.createElement('span');
+                labelSpan.textContent = label;
+                labelSpan.className = 'day-label';
+                if (index === filteredDayIndex) {
+                    labelSpan.classList.add('active');
+                }
+                labelSpan.dataset.dayIndex = index;
+                labelSpan.addEventListener('click', () => handleDayClick(index));
+                labelsContainer.appendChild(labelSpan);
+                if (index < dayLabels.length - 1) {
+                   const spacer = document.createElement('span');
+                   spacer.textContent = ' ';
+                   labelsContainer.appendChild(spacer);
+                }
+            });
+            graphXAxisEl.appendChild(labelsContainer);
+        }
+
         function renderRecords() {
             const records = loadRecords();
             logListEl.innerHTML = '';
+            let recordsToDisplay = records;
+            
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const diffToMonday = (dayOfWeek === 0) ? -6 : 1 - dayOfWeek;
+            const monday = new Date(today);
+            monday.setDate(today.getDate() + diffToMonday);
+            monday.setHours(0, 0, 0, 0);
+
+            if (filteredDayIndex !== null) {
+                const targetDate = new Date(monday);
+                targetDate.setDate(monday.getDate() + filteredDayIndex);
+                const year = targetDate.getFullYear(), month = targetDate.getMonth(), date = targetDate.getDate();
+
+                const dayStr = weekdays[(filteredDayIndex + 1) % 7];
+                recordsTitleEl.textContent = `Records of ${month + 1}-${date}(${dayStr})`;
+
+                recordsToDisplay = records.filter(r => {
+                    const recordDate = new Date(r.startTime);
+                    return recordDate.getFullYear() === year && recordDate.getMonth() === month && recordDate.getDate() === date;
+                });
+            } else {
+                recordsTitleEl.textContent = 'Records';
+            }
+
             const subjectTotals = {};
             let grandTotal = 0;
-            for (const record of records) {
+            for (const record of recordsToDisplay) {
                 const duration = record.endTime - record.startTime;
                 grandTotal += duration;
                 subjectTotals[record.subject] = (subjectTotals[record.subject] || 0) + duration;
@@ -482,6 +644,7 @@
                 `;
                 logListEl.appendChild(logItem);
             }
+
             let summaryText = '-------------------------------------\nTotal (By Subjects)\n-------------------------------------\n';
             for (const subject in subjectAbbreviations) {
                 const totalMs = subjectTotals[subject] || 0;
@@ -492,8 +655,10 @@
             summaryText += '-------------------------------------\n';
             summaryText += `Total  |${formatDuration(grandTotal)}`;
             subjectSummaryEl.textContent = summaryText;
-        }
 
+            renderWeeklyGraph();
+        }
+        
         /*******************************************************************
          * 7. メイン制御・初期化
          *******************************************************************/
@@ -514,7 +679,7 @@
 
         function setupEventListeners() {
             switchBtn.addEventListener('click', () => {
-                unlockAudio(); // ★修正箇所: ここで音声ロック解除を試みる
+                unlockAudio();
                 if (currentTimerMode === 'records') {
                     currentTimerMode = previousTimerMode;
                 } else {
@@ -537,7 +702,7 @@
             });
 
             switchRecordsBtn.addEventListener('click', () => {
-                unlockAudio(); // ★修正箇所: ここでも音声ロック解除を試みる
+                unlockAudio();
                 if (currentTimerMode !== 'records') {
                     previousTimerMode = currentTimerMode; 
                 }
@@ -546,6 +711,7 @@
                 studyTimerContainer.style.display = 'none';
                 recordsContainer.style.display = 'block';
                 switchBtn.textContent = '戻る';
+                filteredDayIndex = null;
                 renderRecords();
             });
 
