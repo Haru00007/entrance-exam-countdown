@@ -526,7 +526,7 @@
             last4AM.setHours(4, 0, 0, 0);
             if (now.getHours() < 4) { last4AM.setDate(last4AM.getDate() - 1); }
             if (lastReset < last4AM) {
-                saveRecords([]);
+                //saveRecords([]);
                 localStorage.setItem('lastReset', now.getTime());
             }
         }
