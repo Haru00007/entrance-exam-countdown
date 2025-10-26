@@ -112,11 +112,10 @@
             color: orange;
             font-size: 16px;
             text-align: left;
-            width: 500px; /* 幅を元に戻します */
-            max-height: 85vh;
+            width: 500px;
             /* ▼▼▼▼▼ 以下2行を追加 ▼▼▼▼▼ */
-            display: flex;
-            flex-direction: column;
+            max-height: 55vh; /* コンテナの最大の高さを画面の高さの約半分に制限 */
+            overflow-y: auto;  /* 内容がはみ出た時だけ縦スクロールバーを表示 */
         }
         #log-list { margin-bottom: 10px; }
         #log-list .log-item {
@@ -209,13 +208,20 @@
         .nav-arrow:hover, #week-range-display:hover {
             color: orange;
         }
-        /* ▼▼▼▼▼ このスタイル定義を丸ごと追加 ▼▼▼▼▼ */
-        #log-summary-wrapper {
-            overflow-y: auto; /* 縦方向にはみ出たらスクロール */
-            padding-right: 15px; /* スクロールバー用の余白 */
-            padding-bottom: 20px;
+        /* スクロールバーの見た目調整 (任意) */
+        #records-container::-webkit-scrollbar {
+            width: 8px;
         }
-        /* ▲▲▲▲▲ このスタイル定義を丸ごと追加 ▲▲▲▲▲ */
+        #records-container::-webkit-scrollbar-track {
+            background: #222;
+        }
+        #records-container::-webkit-scrollbar-thumb {
+            background-color: #555;
+            border-radius: 4px;
+        }
+        #records-container::-webkit-scrollbar-thumb:hover {
+            background-color: orange;
+        }
     </style>
 </head>
 <body>
