@@ -112,7 +112,12 @@
             color: orange;
             font-size: 16px;
             text-align: left;
-            width: 500px;
+            width: 520px; /* スクロールバーの分少し幅を広げます */
+            /* ▼▼▼▼▼ 以下4行を追加・変更 ▼▼▼▼▼ */
+            max-height: 85vh; /* 画面の高さの85%を最大高に */
+            overflow-y: auto; /* 縦方向にはみ出たらスクロール */
+            padding-right: 15px; /* スクロールバー用の余白 */
+            padding-bottom: 20px; /* スクロールした最下部の余白 */
         }
         #log-list { margin-bottom: 10px; }
         #log-list .log-item {
@@ -455,13 +460,16 @@
                 playChime();
                 currentProgramIndex++;
                 if (currentProgramIndex >= programs.length) {
-                    currentProgramIndex = 0;
-                    completedRepeats++;
+                    // ▼▼▼▼▼ ここからが修正箇所 ▼▼▼▼▼
+                    // 完了チェックを先に行い、その後にカウンターを増やすように順番を変更
                     if (totalRepeats !== 0 && completedRepeats >= totalRepeats) {
                         studyTimerState = 'finished'; clearInterval(timerInterval); runningTime = 0;
                         messageEl.textContent = 'Your work is finished today!'; messageEl.style.fontSize = '';
                         btnStartPause.textContent = 'Finished'; updateStudyTimerDisplay(); return;
                     }
+                    currentProgramIndex = 0;
+                    completedRepeats++;
+                    // ▲▲▲▲▲ ここまでが修正箇所 ▲▲▲▲▲
                 }
                 if (studyTimerState !== 'finished') {
                     runningTime = programs[currentProgramIndex].time * 1000;
@@ -646,6 +654,9 @@
             graphXAxisEl.appendChild(labelsContainer);
         }
 
+        // ▼▼▼▼▼ この一行を追加 ▼▼▼▼▼
+        const weekdayAbbrs = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+
         function renderRecords() {
             const records = loadRecords();
             logListEl.innerHTML = '';
@@ -691,12 +702,22 @@
                 const duration = record.endTime - record.startTime;
                 grandTotal += duration;
                 subjectTotals[record.subject] = (subjectTotals[record.subject] || 0) + duration;
+                
+                // ▼▼▼▼▼ ここからが修正箇所 ▼▼▼▼▼
+                let logPrefix = '';
+                // 週表示の場合のみ、曜日の接頭辞を追加
+                if (filteredDayIndex === null) {
+                    const dayAbbr = weekdayAbbrs[recordDate.getDay()];
+                    logPrefix = `${dayAbbr} `;
+                }
+
                 const logItem = document.createElement('div');
                 logItem.className = 'log-item';
                 logItem.innerHTML = `
-                    <span>${formatTime(record.startTime)}-${formatTime(record.endTime)} ${record.subject} (${formatDuration(duration)})</span>
+                    <span>${logPrefix}${formatTime(record.startTime)}-${formatTime(record.endTime)} ${record.subject} (${formatDuration(duration)})</span>
                     <button class="del-btn" data-id="${record.id}">[Del]</button>
                 `;
+                // ▲▲▲▲▲ ここまでが修正箇所 ▲▲▲▲▲
                 logListEl.appendChild(logItem);
             }
 
