@@ -222,6 +222,13 @@
         #records-container::-webkit-scrollbar-thumb:hover {
             background-color: orange;
         }
+        #comparison-summary {
+            font-family: 'LED Calculator', sans-serif;
+            white-space: pre;
+            font-size: 16px;
+            margin: 0;
+            /* 色はJavaScriptで動的に設定します */
+        }
     </style>
 </head>
 <body>
@@ -271,6 +278,7 @@
             <div id="log-summary-wrapper">
                 <div id="log-list"></div>
                 <pre id="subject-summary"></pre>
+                <pre id="comparison-summary"></pre>
             </div>
         </div>
     </div>
@@ -300,8 +308,10 @@
         const recordsContainer = document.getElementById('records-container');
         const logListEl = document.getElementById('log-list');
         const subjectSummaryEl = document.getElementById('subject-summary');
+        const comparisonSummaryEl = document.getElementById('comparison-summary')
         const recordsTitleEl = document.getElementById('records-title');
         const graphXAxisEl = document.getElementById('graph-x-axis');
+        
         let filteredDayIndex = null;
         let weekOffset = 0;
         
@@ -669,12 +679,13 @@
         }
 
         // ▼▼▼▼▼ この一行を追加 ▼▼▼▼▼
-        const weekdayAbbrs = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+        const weekdayAbbrs = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
         function renderRecords() {
-            const records = loadRecords();
+            const allRecords = loadRecords();
             logListEl.innerHTML = '';
-            
+            comparisonSummaryEl.innerHTML = ''; // 比較表示をクリア
+
             const today = new Date();
             today.setDate(today.getDate() + (weekOffset * 7));
             
@@ -684,70 +695,114 @@
             monday.setDate(today.getDate() + diffToMonday);
             monday.setHours(0, 0, 0, 0);
 
-            let recordsToDisplay = records;
-
-            if (filteredDayIndex !== null) {
-                const targetDate = new Date(monday);
-                targetDate.setDate(monday.getDate() + filteredDayIndex);
-                const year = targetDate.getFullYear(), month = targetDate.getMonth(), date = targetDate.getDate();
-
-                const dayStr = weekdays[(filteredDayIndex + 1) % 7];
-                recordsTitleEl.textContent = `Records of ${month + 1}-${date}(${dayStr})`;
-
-                recordsToDisplay = records.filter(r => {
-                    const recordDate = new Date(r.startTime);
-                    return recordDate.getFullYear() === year && recordDate.getMonth() === month && recordDate.getDate() === date;
-                });
-            } else {
-                 recordsTitleEl.textContent = (weekOffset === 0) ? 'This Week Records' : 'Records';
-            }
-
+            let summaryText = '-------------------------------------\nTotal (By Subjects)\n-------------------------------------\n';
             const subjectTotals = {};
             let grandTotal = 0;
-            for (const record of recordsToDisplay) {
-                const recordDate = new Date(record.startTime);
+
+            // --- 週表示の場合の処理 ---
+            if (filteredDayIndex === null) {
+                recordsTitleEl.textContent = (weekOffset === 0) ? 'This Week Records' : 'Records';
                 const sunday = new Date(monday);
                 sunday.setDate(monday.getDate() + 6);
                 sunday.setHours(23, 59, 59, 999);
-                if (filteredDayIndex === null && (recordDate < monday || recordDate > sunday)) {
-                    continue;
+
+                // 表示週の記録を集計
+                const thisWeekRecords = allRecords.filter(r => new Date(r.startTime) >= monday && new Date(r.startTime) <= sunday);
+                for (const record of thisWeekRecords) {
+                    const duration = record.endTime - record.startTime;
+                    grandTotal += duration;
+                    subjectTotals[record.subject] = (subjectTotals[record.subject] || 0) + duration;
+                    const logItem = document.createElement('div');
+                    logItem.className = 'log-item';
+                    logItem.innerHTML = `<span>${formatTime(record.startTime)}-${formatTime(record.endTime)} ${record.subject} (${formatDuration(duration)})</span><button class="del-btn" data-id="${record.id}">[Del]</button>`;
+                    logListEl.appendChild(logItem);
                 }
 
-                const duration = record.endTime - record.startTime;
-                grandTotal += duration;
-                subjectTotals[record.subject] = (subjectTotals[record.subject] || 0) + duration;
+                // 先週の記録を集計
+                const lastWeekMonday = new Date(monday.getTime() - 7 * 24 * 60 * 60 * 1000);
+                const lastWeekSunday = new Date(sunday.getTime() - 7 * 24 * 60 * 60 * 1000);
+                let lastWeekTotal = 0;
+                allRecords.forEach(r => {
+                    const recordDate = new Date(r.startTime);
+                    if (recordDate >= lastWeekMonday && recordDate <= lastWeekSunday) {
+                        lastWeekTotal += (r.endTime - r.startTime);
+                    }
+                });
+
+                // サマリーテキスト作成
+                for (const subject in subjectAbbreviations) {
+                    const totalMs = subjectTotals[subject] || 0;
+                    if (totalMs > 0) summaryText += `${subjectAbbreviations[subject]}|${formatDuration(totalMs)}\n`;
+                }
+                summaryText += '-------------------------------------\n';
+                summaryText += `Total  |${formatDuration(grandTotal)}\n`;
+                const weeklyAverage = grandTotal / 7;
+                summaryText += `W-Avg. |${formatDuration(weeklyAverage)}`;
+                subjectSummaryEl.textContent = summaryText;
+
+                // 先週との比較を作成
+                const lastWeekAverage = lastWeekTotal / 7;
+                const diff = weeklyAverage - lastWeekAverage;
+                const prefix = diff > 1000 ? '+' : diff < -1000 ? '-' : '±';
+                const color = prefix === '+' ? '#0d0' : prefix === '-' ? 'red' : 'orange';
+                comparisonSummaryEl.textContent = `Vs.L-W ${prefix}${formatDuration(Math.abs(diff))}`;
+                comparisonSummaryEl.style.color = color;
+
+            // --- 日表示の場合の処理 ---
+            } else {
+                const targetDate = new Date(monday);
+                targetDate.setDate(monday.getDate() + filteredDayIndex);
+                const year = targetDate.getFullYear(), month = targetDate.getMonth(), date = targetDate.getDate();
+                recordsTitleEl.textContent = `Records of ${month + 1}-${date}(${weekdays[(filteredDayIndex + 1) % 7]})`;
+
+                // 表示日の記録を集計
+                const dayRecords = allRecords.filter(r => {
+                    const recordDate = new Date(r.startTime);
+                    return recordDate.getFullYear() === year && recordDate.getMonth() === month && recordDate.getDate() === date;
+                });
+
+                for (const record of dayRecords) {
+                    const duration = record.endTime - record.startTime;
+                    grandTotal += duration;
+                    subjectTotals[record.subject] = (subjectTotals[record.subject] || 0) + duration;
+                    const logItem = document.createElement('div');
+                    logItem.className = 'log-item';
+                    logItem.innerHTML = `<span>${formatTime(record.startTime)}-${formatTime(record.endTime)} ${record.subject} (${formatDuration(duration)})</span><button class="del-btn" data-id="${record.id}">[Del]</button>`;
+                    logListEl.appendChild(logItem);
+                }
                 
-                // ▼▼▼▼▼ ここからが修正箇所 ▼▼▼▼▼
-                let logPrefix = '';
-                // 週表示の場合のみ、曜日の接頭辞を追加
-                if (filteredDayIndex === null) {
-                    const dayAbbr = weekdayAbbrs[recordDate.getDay()];
-                    logPrefix = `${dayAbbr} `;
-                }
+                // 昨日の記録を集計
+                const yesterday = new Date(targetDate.getTime() - 24 * 60 * 60 * 1000);
+                const yYear = yesterday.getFullYear(), yMonth = yesterday.getMonth(), yDate = yesterday.getDate();
+                let yesterdayTotal = 0;
+                allRecords.forEach(r => {
+                    const recordDate = new Date(r.startTime);
+                    if (recordDate.getFullYear() === yYear && recordDate.getMonth() === yMonth && recordDate.getDate() === yDate) {
+                        yesterdayTotal += (r.endTime - r.startTime);
+                    }
+                });
 
-                const logItem = document.createElement('div');
-                logItem.className = 'log-item';
-                logItem.innerHTML = `
-                    <span>${logPrefix}${formatTime(record.startTime)}-${formatTime(record.endTime)} ${record.subject} (${formatDuration(duration)})</span>
-                    <button class="del-btn" data-id="${record.id}">[Del]</button>
-                `;
-                // ▲▲▲▲▲ ここまでが修正箇所 ▲▲▲▲▲
-                logListEl.appendChild(logItem);
+                // サマリーテキスト作成
+                for (const subject in subjectAbbreviations) {
+                    const totalMs = subjectTotals[subject] || 0;
+                    if (totalMs > 0) summaryText += `${subjectAbbreviations[subject]}|${formatDuration(totalMs)}\n`;
+                }
+                summaryText += '-------------------------------------\n';
+                summaryText += `Total  |${formatDuration(grandTotal)}\n`;
+                const subjectCount = Object.keys(subjectTotals).length;
+                const dailyAverage = subjectCount > 0 ? grandTotal / subjectCount : 0;
+                summaryText += `Avg.   |${formatDuration(dailyAverage)}`;
+                subjectSummaryEl.textContent = summaryText;
+
+                // 昨日との比較を作成
+                const diff = grandTotal - yesterdayTotal;
+                const prefix = diff > 1000 ? '+' : diff < -1000 ? '-' : '±';
+                const color = prefix === '+' ? '#0d0' : prefix === '-' ? 'red' : 'orange';
+                comparisonSummaryEl.textContent = `Vs.YTD ${prefix}${formatDuration(Math.abs(diff))}`;
+                comparisonSummaryEl.style.color = color;
             }
 
-            let summaryText = '-------------------------------------\nTotal (By Subjects)\n-------------------------------------\n';
-            for (const subject in subjectAbbreviations) {
-                const totalMs = subjectTotals[subject] || 0;
-                if (totalMs > 0) {
-                    summaryText += `${subjectAbbreviations[subject]}|${formatDuration(totalMs)}\n`;
-                }
-            }
-            summaryText += '-------------------------------------\n';
-            summaryText += `Total  |${formatDuration(grandTotal)}\n`;
-            const weeklyAverage = grandTotal / 7;
-            summaryText += `Avg.   |${formatDuration(weeklyAverage)}`;
-            subjectSummaryEl.textContent = summaryText;
-
+            // グラフは最後に描画
             renderWeeklyGraph();
         }
         
