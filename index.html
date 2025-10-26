@@ -112,12 +112,11 @@
             color: orange;
             font-size: 16px;
             text-align: left;
-            width: 520px; /* スクロールバーの分少し幅を広げます */
-            /* ▼▼▼▼▼ 以下4行を追加・変更 ▼▼▼▼▼ */
-            max-height: 85vh; /* 画面の高さの85%を最大高に */
-            overflow-y: auto; /* 縦方向にはみ出たらスクロール */
-            padding-right: 15px; /* スクロールバー用の余白 */
-            padding-bottom: 20px; /* スクロールした最下部の余白 */
+            width: 500px; /* 幅を元に戻します */
+            max-height: 85vh;
+            /* ▼▼▼▼▼ 以下2行を追加 ▼▼▼▼▼ */
+            display: flex;
+            flex-direction: column;
         }
         #log-list { margin-bottom: 10px; }
         #log-list .log-item {
@@ -210,6 +209,13 @@
         .nav-arrow:hover, #week-range-display:hover {
             color: orange;
         }
+        /* ▼▼▼▼▼ このスタイル定義を丸ごと追加 ▼▼▼▼▼ */
+        #log-summary-wrapper {
+            overflow-y: auto; /* 縦方向にはみ出たらスクロール */
+            padding-right: 15px; /* スクロールバー用の余白 */
+            padding-bottom: 20px;
+        }
+        /* ▲▲▲▲▲ このスタイル定義を丸ごと追加 ▲▲▲▲▲ */
     </style>
 </head>
 <body>
@@ -256,8 +262,10 @@
                     <div id="graph-x-axis"></div>
                 </div>
             </div>
-            <div id="log-list"></div>
-            <pre id="subject-summary"></pre>
+            <div id="log-summary-wrapper">
+                <div id="log-list"></div>
+                <pre id="subject-summary"></pre>
+            </div>
         </div>
     </div>
 
