@@ -1,88 +1,235 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>タイマー</title>
     <style>
         @font-face {
-            font-family: 'DSEG7 Classic'; src: url('./fonts/DSEG7Classic-Bold.woff2') format('woff2');
-            font-weight: bold; font-style: normal;
+            font-family: 'DSEG7 Classic';
+            src: url('./fonts/DSEG7Classic-Bold.woff2') format('woff2');
+            font-weight: bold;
+            font-style: normal;
         }
+
         @font-face {
-            font-family: 'DSEG14 Classic'; src: url('./fonts/DSEG14Classic-Bold.woff2') format('woff2');
-            font-weight: bold; font-style: normal;
+            font-family: 'DSEG14 Classic';
+            src: url('./fonts/DSEG14Classic-Bold.woff2') format('woff2');
+            font-weight: bold;
+            font-style: normal;
         }
+
         @font-face {
-            font-family: 'LED Calculator'; src: url('./fonts/LEDCalculator.ttf') format('truetype');
+            font-family: 'LED Calculator';
+            src: url('./fonts/LEDCalculator.ttf') format('truetype');
         }
+
         @font-face {
-            font-family: 'Ktai-Dot-Font-LCD'; src: url('./fonts/Ketai-dot-font-LCD.otf') format('opentype');
+            font-family: 'Ktai-Dot-Font-LCD';
+            src: url('./fonts/Ketai-dot-font-LCD.otf') format('opentype');
         }
+
         body {
-            background-color: #000; font-family: 'DSEG7 Classic', sans-serif;
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; margin: 0; text-align: center;
+            background-color: #000;
+            font-family: 'DSEG7 Classic', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
         }
-        .container { transform: scale(1.5); }
-        .countdown, .current-time { margin-bottom: 40px; }
-        .dseg14 { font-family: 'DSEG14 Classic', sans-serif; }
-        .countdown span, .current-time span { letter-spacing: 4px; }
-        .space { margin: 0 10px; }
-        [data-placeholder] { position: relative; }
+
+        .container {
+            transform: scale(1.5);
+        }
+
+        .countdown,
+        .current-time {
+            margin-bottom: 40px;
+        }
+
+        .dseg14 {
+            font-family: 'DSEG14 Classic', sans-serif;
+        }
+
+        .countdown span,
+        .current-time span {
+            letter-spacing: 4px;
+        }
+
+        .space {
+            margin: 0 10px;
+        }
+
+        [data-placeholder] {
+            position: relative;
+        }
+
         [data-placeholder]::before {
-            content: attr(data-placeholder); position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; color: rgba(255, 255, 255, 0.05);
+            content: attr(data-placeholder);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            color: rgba(255, 255, 255, 0.05);
         }
-        #countdown-ms { font-size: 40px; color: white; }
-        #day, #msec { color: orange; }
-        #hour { font-size: 32px; color: red; position: relative; top: -2px; }
-        #countdown-dh { font-size: 2em; }
-        #current-date, #current-hms { font-size: 2em; color: white; }
-        .jihou-highlight { color: red !important; transition: color 0.05s; }
-        #day { display: inline-block; width: 115px; text-align: right; }
+
+        #countdown-ms {
+            font-size: 40px;
+            color: white;
+        }
+
+        #day,
+        #msec {
+            color: orange;
+        }
+
+        #hour {
+            font-size: 32px;
+            color: red;
+            position: relative;
+            top: -2px;
+        }
+
+        #countdown-dh {
+            font-size: 2em;
+        }
+
+        #current-date,
+        #current-hms {
+            font-size: 2em;
+            color: white;
+        }
+
+        .jihou-highlight {
+            color: red !important;
+            transition: color 0.05s;
+        }
+
+        #day {
+            display: inline-block;
+            width: 115px;
+            text-align: right;
+        }
+
         #countdown-dh-labels {
-            font-family: 'LED Calculator', sans-serif; font-size: 14px; color: orange;
-            letter-spacing: 1px; margin-top: 5px; display: flex;
-            justify-content: center; align-items: center;
+            font-family: 'LED Calculator', sans-serif;
+            font-size: 14px;
+            color: orange;
+            letter-spacing: 1px;
+            margin-top: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        #day-label { width: 120px; text-align: right; }
-        #hour-label { width: 90px; text-align: right; }
-        #msec-label { width: 120px; }
+
+        #day-label {
+            width: 120px;
+            text-align: right;
+        }
+
+        #hour-label {
+            width: 90px;
+            text-align: right;
+        }
+
+        #msec-label {
+            width: 120px;
+        }
+
         #message-area {
-            font-family: 'Ktai-Dot-Font-LCD', sans-serif; font-size: 24px;
-            color: #0d0; letter-spacing: 2px; margin-bottom: 30px;
-            height: 32px; line-height: 32px; position: relative;
+            font-family: 'Ktai-Dot-Font-LCD', sans-serif;
+            font-size: 24px;
+            color: #0d0;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            height: 32px;
+            line-height: 32px;
+            position: relative;
         }
+
         #message-area::after {
-            content: '_'; position: absolute; animation: blink 1s step-end infinite;
+            content: '_';
+            position: absolute;
+            animation: blink 1s step-end infinite;
             font-family: 'LED Calculator', sans-serif;
         }
+
         #message-area.subject-mode {
             font-family: 'LED Calculator', sans-serif;
-            font-size: 32px; letter-spacing: 1px;
+            font-size: 32px;
+            letter-spacing: 1px;
         }
+
         #message-area.subject-mode::after {
-            content: ''; animation: none;
+            content: '';
+            animation: none;
         }
-        @keyframes blink { 50% { opacity: 0; } }
-        .timer-mode-container { display: none; }
-        #switch-button-area { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; }
+
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .timer-mode-container {
+            display: none;
+        }
+
+        #switch-button-area {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
         .switch-btn {
-            background: #333; color: #fff; border: 1px solid #555;
-            padding: 5px 10px; font-family: sans-serif; font-size: 12px; cursor: pointer;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            font-family: sans-serif;
+            font-size: 12px;
+            cursor: pointer;
         }
-        .switch-btn:active { background: #555; }
-        #study-timer-display { font-size: 40px; color: white; height: 40px; }
+
+        .switch-btn:active {
+            background: #555;
+        }
+
+        #study-timer-display {
+            font-size: 40px;
+            color: white;
+            height: 40px;
+        }
+
         #study-timer-info {
             font-size: 2em;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-        #study-repeats-total, #study-program-number { color: orange; }
-        #study-repeats-total { display: inline-block; width: 115px; text-align: right; }
-        #study-program-number { display: inline-block; width: 115px; text-align: left; }
+
+        #study-repeats-total,
+        #study-program-number {
+            color: orange;
+        }
+
+        #study-repeats-total {
+            display: inline-block;
+            width: 115px;
+            text-align: right;
+        }
+
+        #study-program-number {
+            display: inline-block;
+            width: 115px;
+            text-align: left;
+        }
+
         #study-repeats-completed {
             color: red;
             font-size: 32px;
@@ -92,21 +239,46 @@
             width: 80px;
             text-align: center;
         }
+
         #study-timer-controls {
-            margin-top: 10px; display: grid;
+            margin-top: 10px;
+            display: grid;
             grid-template-columns: repeat(6, 1fr);
             grid-gap: 5px;
         }
-        #btn-pset { grid-column: 2 / span 2; }
-        #btn-start-pause { grid-column: 4 / span 2; }
-        .control-btn {
-            background-color: transparent; border: none; color: orange;
-            font-family: 'LED Calculator', sans-serif; font-size: 14px;
-            padding: 8px 4px; cursor: pointer; opacity: 0.8;
+
+        #btn-pset {
+            grid-column: 2 / span 2;
         }
-        .control-btn:hover { opacity: 1.0; }
-        .control-btn:active { opacity: 0.6; }
-        .control-btn.toggled { color: red; opacity: 1.0; }
+
+        #btn-start-pause {
+            grid-column: 4 / span 2;
+        }
+
+        .control-btn {
+            background-color: transparent;
+            border: none;
+            color: orange;
+            font-family: 'LED Calculator', sans-serif;
+            font-size: 14px;
+            padding: 8px 4px;
+            cursor: pointer;
+            opacity: 0.8;
+        }
+
+        .control-btn:hover {
+            opacity: 1.0;
+        }
+
+        .control-btn:active {
+            opacity: 0.6;
+        }
+
+        .control-btn.toggled {
+            color: red;
+            opacity: 1.0;
+        }
+
         #records-container {
             font-family: 'LED Calculator', sans-serif;
             color: orange;
@@ -114,27 +286,43 @@
             text-align: left;
             width: 500px;
             /* ▼▼▼▼▼ 以下2行を追加 ▼▼▼▼▼ */
-            max-height: 55vh; /* コンテナの最大の高さを画面の高さの約半分に制限 */
-            overflow-y: auto;  /* 内容がはみ出た時だけ縦スクロールバーを表示 */
+            max-height: 55vh;
+            /* コンテナの最大の高さを画面の高さの約半分に制限 */
+            overflow-y: auto;
+            /* 内容がはみ出た時だけ縦スクロールバーを表示 */
         }
-        #log-list { margin-bottom: 10px; }
+
+        #log-list {
+            margin-bottom: 10px;
+        }
+
         #log-list .log-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+
         .del-btn {
-            background: none; border: none; color: red;
+            background: none;
+            border: none;
+            color: red;
             font-family: 'LED Calculator', sans-serif;
-            font-size: 16px; cursor: pointer; opacity: 0.7;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0.7;
         }
-        .del-btn:hover { opacity: 1.0; }
+
+        .del-btn:hover {
+            opacity: 1.0;
+        }
+
         #subject-summary {
             font-family: 'LED Calculator', sans-serif;
             white-space: pre;
             font-size: 16px;
             margin: 0;
         }
+
         #records-header {
             display: flex;
             justify-content: space-between;
@@ -142,14 +330,23 @@
             width: 100%;
             margin-bottom: 10px;
         }
+
         #records-title {
             font-size: 20px;
             margin-top: 10px;
+            cursor: pointer;
+            user-select: none;
         }
+
+        #records-title:hover {
+            color: orange;
+        }
+
         #graph-wrapper {
             display: flex;
             flex-direction: column;
         }
+
         #weekly-graph {
             font-family: 'LED Calculator', sans-serif;
             white-space: pre;
@@ -160,6 +357,7 @@
             line-height: 1.0;
             color: #0d0;
         }
+
         #graph-x-axis {
             font-family: 'LED Calculator', sans-serif;
             font-size: 12px;
@@ -167,6 +365,7 @@
             color: #0d0;
             line-height: 1.1;
         }
+
         .day-label {
             display: inline-block;
             cursor: pointer;
@@ -175,13 +374,16 @@
             width: 7ch;
             text-align: center;
         }
+
         .day-label:hover {
             background-color: rgba(0, 255, 0, 0.1);
         }
+
         .day-label.active {
             color: orange;
             background-color: rgba(255, 165, 0, 0.1);
         }
+
         #graph-nav {
             font-family: 'LED Calculator', sans-serif;
             font-size: 12px;
@@ -193,35 +395,42 @@
             align-items: center;
             white-space: pre;
         }
-        .nav-arrow, #week-range-display {
-            cursor: pointer;
-            padding: 0 10px;
-            .nav-arrow, #week-range-display {
+
+        .nav-arrow,
+        #week-range-display {
             cursor: pointer;
             padding: 0 10px;
             /* ▼▼▼▼▼ 以下3行を追加 ▼▼▼▼▼ */
-            -webkit-user-select: none; /* Safari, Chrome */
+            -webkit-user-select: none;
+            /* Safari, Chrome */
             user-select: none;
-            -webkit-tap-highlight-color: transparent; /* タップ時のハイライトを消す */
-            }
+            -webkit-tap-highlight-color: transparent;
+            /* タップ時のハイライトを消す */
         }
-        .nav-arrow:hover, #week-range-display:hover {
+
+        .nav-arrow:hover,
+        #week-range-display:hover {
             color: orange;
         }
+
         /* スクロールバーの見た目調整 (任意) */
         #records-container::-webkit-scrollbar {
             width: 8px;
         }
+
         #records-container::-webkit-scrollbar-track {
             background: #222;
         }
+
         #records-container::-webkit-scrollbar-thumb {
             background-color: #555;
             border-radius: 4px;
         }
+
         #records-container::-webkit-scrollbar-thumb:hover {
             background-color: orange;
         }
+
         #comparison-summary {
             font-family: 'LED Calculator', sans-serif;
             white-space: pre;
@@ -231,6 +440,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div id="message-area"></div>
@@ -240,13 +450,22 @@
         </div>
         <div id="countdown-container" class="timer-mode-container">
             <div class="countdown">
-                <div id="countdown-ms"><span id="min" data-placeholder="88">00</span>:<span id="sec" data-placeholder="88">00</span></div>
-                <div id="countdown-dh"><span id="day" data-placeholder="888">0</span><span class="space"></span><span id="hour" data-placeholder="88">00</span><span class="space"></span><span id="msec" data-placeholder="888">000</span></div>
-                <div id="countdown-dh-labels"><span id="day-label" class="label-unit">Days</span><span class="space"></span><span id="hour-label" class="label-unit">Hours</span><span class="space"></span><span id="msec-label" class="label-unit">ms</span></div>
+                <div id="countdown-ms"><span id="min" data-placeholder="88">00</span>:<span id="sec"
+                        data-placeholder="88">00</span></div>
+                <div id="countdown-dh"><span id="day" data-placeholder="888">0</span><span class="space"></span><span
+                        id="hour" data-placeholder="88">00</span><span class="space"></span><span id="msec"
+                        data-placeholder="888">000</span></div>
+                <div id="countdown-dh-labels"><span id="day-label" class="label-unit">Days</span><span
+                        class="space"></span><span id="hour-label" class="label-unit">Hours</span><span
+                        class="space"></span><span id="msec-label" class="label-unit">ms</span></div>
             </div>
             <div class="current-time">
-                <div id="current-date"><span id="year" data-placeholder="8888">2025</span>-<span id="month" data-placeholder="88">09</span>-<span id="date" data-placeholder="88">22</span><span class="dseg14" id="day-of-week" data-placeholder="***">MON</span></div>
-                <div id="current-hms"><span id="current-hour" data-placeholder="88">21</span>:<span id="current-min" data-placeholder="88">25</span>:<span id="current-sec" data-placeholder="88">15</span>.<span id="current-msec" data-placeholder="8">0</span></div>
+                <div id="current-date"><span id="year" data-placeholder="8888">2025</span>-<span id="month"
+                        data-placeholder="88">09</span>-<span id="date" data-placeholder="88">22</span><span
+                        class="dseg14" id="day-of-week" data-placeholder="***">MON</span></div>
+                <div id="current-hms"><span id="current-hour" data-placeholder="88">21</span>:<span id="current-min"
+                        data-placeholder="88">25</span>:<span id="current-sec" data-placeholder="88">15</span>.<span
+                        id="current-msec" data-placeholder="8">0</span></div>
             </div>
         </div>
         <div id="study-timer-container" class="timer-mode-container">
@@ -259,11 +478,17 @@
                 <span id="study-program-number" data-placeholder="P88"></span>
             </div>
             <div id="study-timer-controls">
-                <button id="btn-plus-10m" class="control-btn">+10m</button><button id="btn-plus-1m" class="control-btn">+1m</button><button id="btn-plus-1s" class="control-btn">+1s</button><button id="btn-reset" class="control-btn">Reset</button><button id="btn-show-100s" class="control-btn">Show 1/100s</button><button id="btn-repeat-plus" class="control-btn">Repeat +1</button>
-                <button id="btn-minus-10m" class="control-btn">-10m</button><button id="btn-minus-1m" class="control-btn">-1m</button><button id="btn-minus-1s" class="control-btn">-1s</button>
-                <button id="btn-prev-subject" class="control-btn"><-</button><button id="btn-next-subject" class="control-btn">-></button>
-                <button id="btn-repeat-minus" class="control-btn">Repeat -1</button>
-                <button id="btn-pset" class="control-btn">P-Set</button><button id="btn-start-pause" class="control-btn">Start</button>
+                <button id="btn-plus-10m" class="control-btn">+10m</button><button id="btn-plus-1m"
+                    class="control-btn">+1m</button><button id="btn-plus-1s" class="control-btn">+1s</button><button
+                    id="btn-reset" class="control-btn">Reset</button><button id="btn-show-100s" class="control-btn">Show
+                    1/100s</button><button id="btn-repeat-plus" class="control-btn">Repeat +1</button>
+                <button id="btn-minus-10m" class="control-btn">-10m</button><button id="btn-minus-1m"
+                    class="control-btn">-1m</button><button id="btn-minus-1s" class="control-btn">-1s</button>
+                <button id="btn-prev-subject" class="control-btn"><-< /button><button id="btn-next-subject"
+                            class="control-btn">-></button>
+                        <button id="btn-repeat-minus" class="control-btn">Repeat -1</button>
+                        <button id="btn-pset" class="control-btn">P-Set</button><button id="btn-start-pause"
+                            class="control-btn">Start</button>
             </div>
         </div>
         <div id="records-container" class="timer-mode-container">
@@ -287,9 +512,9 @@
         /*******************************************************************
          * 1. グローバル設定・定数
          *******************************************************************/
-        
-        const DEBUG_SPEED_MULTIPLIER = 1; 
-        
+
+        const DEBUG_SPEED_MULTIPLIER = 1;
+
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         let currentTimerMode = 'countdown';
         let previousTimerMode = 'countdown';
@@ -297,7 +522,7 @@
         const switchBtn = document.getElementById('switch-timer-btn');
         const countdownContainer = document.getElementById('countdown-container');
         const studyTimerContainer = document.getElementById('study-timer-container');
-        const minEl=document.getElementById('min'),secEl=document.getElementById('sec'),dayEl=document.getElementById('day'),hourEl=document.getElementById('hour'),msecEl=document.getElementById('msec'),yearEl=document.getElementById('year'),monthEl=document.getElementById('month'),dateEl=document.getElementById('date'),dayOfWeekEl=document.getElementById('day-of-week'),currentHourEl=document.getElementById('current-hour'),currentMinEl=document.getElementById('current-min'),currentSecEl=document.getElementById('current-sec'),currentMsecEl=document.getElementById('current-msec'),dayLabelEl=document.getElementById('day-label'),hourLabelEl=document.getElementById('hour-label'),currentHmsEl=document.getElementById('current-hms');
+        const minEl = document.getElementById('min'), secEl = document.getElementById('sec'), dayEl = document.getElementById('day'), hourEl = document.getElementById('hour'), msecEl = document.getElementById('msec'), yearEl = document.getElementById('year'), monthEl = document.getElementById('month'), dateEl = document.getElementById('date'), dayOfWeekEl = document.getElementById('day-of-week'), currentHourEl = document.getElementById('current-hour'), currentMinEl = document.getElementById('current-min'), currentSecEl = document.getElementById('current-sec'), currentMsecEl = document.getElementById('current-msec'), dayLabelEl = document.getElementById('day-label'), hourLabelEl = document.getElementById('hour-label'), currentHmsEl = document.getElementById('current-hms');
         const studyDisplayEl = document.getElementById('study-timer-display');
         const btnShow100s = document.getElementById('btn-show-100s');
         const btnStartPause = document.getElementById('btn-start-pause');
@@ -311,16 +536,17 @@
         const comparisonSummaryEl = document.getElementById('comparison-summary')
         const recordsTitleEl = document.getElementById('records-title');
         const graphXAxisEl = document.getElementById('graph-x-axis');
-        
+
         let filteredDayIndex = null;
         let weekOffset = 0;
-        
+        let isMonthlyView = false;
+
         /*******************************************************************
          * 2. 共通テストタイマー関連 (変更なし)
          *******************************************************************/
-        
+
         const targetDate = new Date("2026-01-17T00:00:00");
-        const holidays = ['2025-01-01', '2025-01-13', '2025-02-11', '2025-02-24', '2025-03-20','2025-04-29', '2025-05-03', '2025-05-04', '2025-05-05', '2025-05-06','2025-07-21', '2025-08-11', '2025-09-15', '2025-09-23', '2025-10-13','2025-11-03', '2025-11-24'];
+        const holidays = ['2025-01-01', '2025-01-13', '2025-02-11', '2025-02-24', '2025-03-20', '2025-04-29', '2025-05-03', '2025-05-04', '2025-05-05', '2025-05-06', '2025-07-21', '2025-08-11', '2025-09-15', '2025-09-23', '2025-10-13', '2025-11-03', '2025-11-24'];
         const weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
         let currentDays = 0, remainingHolidays = 0;
         let lastCheckedDate = null, lastSecond = -1, highlightUntil = 0;
@@ -340,16 +566,16 @@
             if (now.getDate() !== lastCheckedDate) { remainingHolidays = calculateRemainingHolidays(targetDate); lastCheckedDate = now.getDate(); }
             const diff = targetDate.getTime() - now.getTime();
             if (diff > 0) {
-                const days = Math.floor(diff/864e5), hours = Math.floor(diff%864e5/36e5), mins = Math.floor(diff%36e5/6e4), secs = Math.floor(diff%6e4/1e3), msecs = diff%1e3;
+                const days = Math.floor(diff / 864e5), hours = Math.floor(diff % 864e5 / 36e5), mins = Math.floor(diff % 36e5 / 6e4), secs = Math.floor(diff % 6e4 / 1e3), msecs = diff % 1e3;
                 currentDays = days;
-                minEl.textContent = String(mins).padStart(2,"0"); secEl.textContent = String(secs).padStart(2,"0"); dayEl.textContent = String(days);
-                hourEl.textContent = String(hours).padStart(2,"0"); msecEl.textContent = String(msecs).padStart(3,"0");
+                minEl.textContent = String(mins).padStart(2, "0"); secEl.textContent = String(secs).padStart(2, "0"); dayEl.textContent = String(days);
+                hourEl.textContent = String(hours).padStart(2, "0"); msecEl.textContent = String(msecs).padStart(3, "0");
                 dayLabelEl.textContent = 1 === days ? "Day" : "Days"; hourLabelEl.textContent = 1 === hours ? "Hour" : "Hours";
             }
             const currentHour = now.getHours(), currentMin = now.getMinutes(), currentSec = now.getSeconds();
-            yearEl.textContent = String(now.getFullYear()).padStart(4,"0"); monthEl.textContent = String(now.getMonth()+1).padStart(2,"0"); dateEl.textContent = String(now.getDate()).padStart(2,"0");
-            dayOfWeekEl.textContent = weekdays[now.getDay()]; currentHourEl.textContent = String(currentHour).padStart(2,"0"); currentMinEl.textContent = String(currentMin).padStart(2,"0");
-            currentSecEl.textContent = String(currentSec).padStart(2,"0"); currentMsecEl.textContent = Math.floor(now.getMilliseconds()/100);
+            yearEl.textContent = String(now.getFullYear()).padStart(4, "0"); monthEl.textContent = String(now.getMonth() + 1).padStart(2, "0"); dateEl.textContent = String(now.getDate()).padStart(2, "0");
+            dayOfWeekEl.textContent = weekdays[now.getDay()]; currentHourEl.textContent = String(currentHour).padStart(2, "0"); currentMinEl.textContent = String(currentMin).padStart(2, "0");
+            currentSecEl.textContent = String(currentSec).padStart(2, "0"); currentMsecEl.textContent = Math.floor(now.getMilliseconds() / 100);
             if (currentSec !== lastSecond) { if (currentMin === 59 && (currentSec >= 57)) { highlightUntil = now.getTime() + 100; } lastSecond = currentSec; }
             const isJihou = (currentMin === 0 && currentSec < 5), isHighlighted = now.getTime() < highlightUntil;
             isJihou || isHighlighted ? currentHmsEl.classList.add("jihou-highlight") : currentHmsEl.classList.remove("jihou-highlight");
@@ -358,14 +584,14 @@
         /*******************************************************************
          * 3. ランダムメッセージ関連 (変更なし)
          *******************************************************************/
-        
-        const randomMessages = ["キョウツウテストマデ アト DDDニチ!","シッテタ? キュウジツハアトddニチシカナインダヨ!","ナニヤッテルンデスカ、 ベンキョウシテクダサイ!","ガンバルアナタヲ オウエンシテイマス。","ヒトヤスミモ ダイジデスヨ。","モウコウコウモ オワッチャウネェ","トキノナガレハ ハヤイモノダヨ","ハナレバナレニ ナッテシマウノカナ...","ベンキョウ ガンバレヨ!","イママデノドリョクヲシンジテ。","キミナラデキル!","ラストスパートダ!","サイコウノハルヲムカエヨウ!","ムリシスギナイデネ。","ヒトリジャナイヨ。","アトスコシノシンボウ...","コンディションヲトトノエテ。","ケッカハカナラズツイテクル。","オワッタラ パーットアソボウゼ!"];
+
+        const randomMessages = ["キョウツウテストマデ アト DDDニチ!", "シッテタ? キュウジツハアトddニチシカナインダヨ!", "ナニヤッテルンデスカ、 ベンキョウシテクダサイ!", "ガンバルアナタヲ オウエンシテイマス。", "ヒトヤスミモ ダイジデスヨ。", "モウコウコウモ オワッチャウネェ", "トキノナガレハ ハヤイモノダヨ", "ハナレバナレニ ナッテシマウノカナ...", "ベンキョウ ガンバレヨ!", "イママデノドリョクヲシンジテ。", "キミナラデキル!", "ラストスパートダ!", "サイコウノハルヲムカエヨウ!", "ムリシスギナイデネ。", "ヒトリジャナイヨ。", "アトスコシノシンボウ...", "コンディションヲトトノエテ。", "ケッカハカナラズツイテクル。", "オワッタラ パーットアソボウゼ!"];
         const TYPING_SPEED = 150, DELETING_SPEED = 100, GREETING_STAY_DURATION = 5000;
 
         async function messageCycle() {
             if (currentTimerMode !== 'countdown') return;
-            const type = async text => { for(let i=0; i < text.length; i++) { if (currentTimerMode !== 'countdown') { messageEl.textContent = ''; return false; } messageEl.textContent = text.substring(0, i + 1); await sleep(TYPING_SPEED); } return true; };
-            const del = async () => { const currentText = messageEl.textContent; for(let i = currentText.length; i > 0; i--) { if (currentTimerMode !== 'countdown') { messageEl.textContent = ''; return false; } messageEl.textContent = currentText.substring(0, i - 1); await sleep(DELETING_SPEED); } return true; };
+            const type = async text => { for (let i = 0; i < text.length; i++) { if (currentTimerMode !== 'countdown') { messageEl.textContent = ''; return false; } messageEl.textContent = text.substring(0, i + 1); await sleep(TYPING_SPEED); } return true; };
+            const del = async () => { const currentText = messageEl.textContent; for (let i = currentText.length; i > 0; i--) { if (currentTimerMode !== 'countdown') { messageEl.textContent = ''; return false; } messageEl.textContent = currentText.substring(0, i - 1); await sleep(DELETING_SPEED); } return true; };
             const hour = new Date().getHours();
             let greeting = (hour >= 5 && hour < 10) ? "オハヨウゴザイマス" : (hour >= 10 && hour < 17) ? "コンニチハ" : "コンバンワ";
             if (!await type(greeting)) return;
@@ -384,7 +610,7 @@
                 await sleep(500);
             }
         }
-        
+
         /*******************************************************************
          * 4. 時間割タイマー関連
          *******************************************************************/
@@ -394,7 +620,7 @@
         let studyTimerState = 'setting', programs = [], settingTime = 0, runningTime = 0;
         let currentProgramIndex = 0, totalRepeats = 1, completedRepeats = 0;
         let showHundredths = false, timerInterval = null, isSettingProgram = false;
-        let expectedEndTime = 0; 
+        let expectedEndTime = 0;
         const chimeSound = new Audio('Chime.wav');
         let isAudioUnlocked = false;
 
@@ -409,7 +635,7 @@
                 console.log("Audio unlocked successfully.");
             }).catch(error => console.error("Audio unlock failed:", error));
         }
-        
+
         function playChime() {
             if (!isAudioUnlocked) {
                 console.warn("Audio is not unlocked yet. Cannot play chime.");
@@ -426,8 +652,8 @@
             const totalSeconds = Math.floor(timeToShow / 1000), hours = Math.floor(totalSeconds / 3600), minutes = Math.floor((totalSeconds % 3600) / 60), seconds = totalSeconds % 60, hundredths = Math.floor((timeToShow % 1000) / 10);
 
             const minutesStr = (hours > 0) ? String(minutes).padStart(2, '0') : String(minutes).padStart(2, '!');
-            studyDisplayEl.textContent = (showHundredths && totalSeconds < 60 && studyTimerState !== 'setting') 
-                ? `${String(seconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}` 
+            studyDisplayEl.textContent = (showHundredths && totalSeconds < 60 && studyTimerState !== 'setting')
+                ? `${String(seconds).padStart(2, '0')}.${String(hundredths).padStart(2, '0')}`
                 : `${minutesStr}:${String(seconds).padStart(2, '0')}`;
 
             studyRepeatsCompletedEl.textContent = (hours > 0) ? String(hours).padStart(2, '!') : '!!';
@@ -443,7 +669,7 @@
             studyProgramNumberEl.innerHTML = '';
             studyProgramNumberEl.textContent = `P${programNumberDigits}`;
         }
-        
+
         function updateSubjectDisplay() {
             if (studyTimerState === 'setting' && !isSettingProgram) {
                 messageEl.textContent = subjects[currentSubjectIndex];
@@ -472,7 +698,7 @@
                 messageEl.style.fontSize = '';
             }
         }
-        
+
         function timerTick() {
             runningTime = expectedEndTime - Date.now();
             if (runningTime <= 0) {
@@ -533,7 +759,7 @@
             updateStudyTimerDisplay();
             updateSubjectDisplay();
         }
-        
+
         /*******************************************************************
          * 6. 記録機能関連
          *******************************************************************/
@@ -590,10 +816,10 @@
             const graphEl = document.getElementById('weekly-graph');
             const graphNavEl = document.getElementById('graph-nav');
             const records = loadRecords();
-            
+
             const today = new Date();
             today.setDate(today.getDate() + (weekOffset * 7));
-            
+
             const dayOfWeek = today.getDay();
             const diffToMonday = (dayOfWeek === 0) ? -6 : 1 - dayOfWeek;
             const monday = new Date(today);
@@ -602,7 +828,7 @@
             const sunday = new Date(monday);
             sunday.setDate(monday.getDate() + 6);
             sunday.setHours(23, 59, 59, 999);
-            
+
             // ▼▼▼▼▼ 変更箇所 (イベントリスナーの追加を削除) ▼▼▼▼▼
             graphNavEl.innerHTML = `
                 <span class="nav-arrow" id="prev-week-btn">&lt;-</span>
@@ -644,7 +870,7 @@
                 } else {
                     line += '   |';
                 }
-                
+
                 if (i === 0) {
                     line += '-'.repeat(49);
                 } else {
@@ -688,7 +914,7 @@
 
             const today = new Date();
             today.setDate(today.getDate() + (weekOffset * 7));
-            
+
             const dayOfWeek = today.getDay();
             const diffToMonday = (dayOfWeek === 0) ? -6 : 1 - dayOfWeek;
             const monday = new Date(today);
@@ -700,7 +926,15 @@
             let grandTotal = 0;
 
             // --- 週表示の場合の処理 ---
+            // --- 週表示の場合の処理 ---
             if (filteredDayIndex === null) {
+                // ▼▼▼▼▼ 4週間表示への分岐 ▼▼▼▼▼
+                if (isMonthlyView) {
+                    renderMonthlyView(allRecords, monday, new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000));
+                    return;
+                }
+                // ▲▲▲▲▲ 4週間表示への分岐 ▲▲▲▲▲
+
                 recordsTitleEl.textContent = (weekOffset === 0) ? 'This Week Records' : 'Records';
                 const sunday = new Date(monday);
                 sunday.setDate(monday.getDate() + 6);
@@ -714,7 +948,8 @@
                     subjectTotals[record.subject] = (subjectTotals[record.subject] || 0) + duration;
                     const logItem = document.createElement('div');
                     logItem.className = 'log-item';
-                    logItem.innerHTML = `<span>${formatTime(record.startTime)}-${formatTime(record.endTime)} ${record.subject} (${formatDuration(duration)})</span><button class="del-btn" data-id="${record.id}">[Del]</button>`;
+                    const dayStr = weekdays[new Date(record.startTime).getDay()];
+                    logItem.innerHTML = `<span>${dayStr} ${formatTime(record.startTime)}-${formatTime(record.endTime)} ${record.subject} (${formatDuration(duration)})</span><button class="del-btn" data-id="${record.id}">[Del]</button>`;
                     logListEl.appendChild(logItem);
                 }
 
@@ -748,7 +983,7 @@
                 comparisonSummaryEl.textContent = `Vs.L-W ${prefix}${formatDuration(Math.abs(diff))}`;
                 comparisonSummaryEl.style.color = color;
 
-            // --- 日表示の場合の処理 ---
+                // --- 日表示の場合の処理 ---
             } else {
                 const targetDate = new Date(monday);
                 targetDate.setDate(monday.getDate() + filteredDayIndex);
@@ -770,7 +1005,7 @@
                     logItem.innerHTML = `<span>${formatTime(record.startTime)}-${formatTime(record.endTime)} ${record.subject} (${formatDuration(duration)})</span><button class="del-btn" data-id="${record.id}">[Del]</button>`;
                     logListEl.appendChild(logItem);
                 }
-                
+
                 // 昨日の記録を集計
                 const yesterday = new Date(targetDate.getTime() - 24 * 60 * 60 * 1000);
                 const yYear = yesterday.getFullYear(), yMonth = yesterday.getMonth(), yDate = yesterday.getDate();
@@ -803,9 +1038,181 @@
             }
 
             // グラフは最後に描画
-            renderWeeklyGraph();
+            if (!isMonthlyView) renderWeeklyGraph();
         }
-        
+
+        // ▼▼▼▼▼ 4週間表示の実装 ▼▼▼▼▼
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const getOrdinal = (n) => {
+            const s = ["th", "st", "nd", "rd"];
+            const v = n % 100;
+            return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        };
+
+        function renderMonthlyView(allRecords, monday, sunday) {
+            recordsTitleEl.textContent = '4-Week Summary';
+
+            // 4週間のデータを準備 (新しい順: 今週 -> 3週間前)
+            const weeklyData = [];
+            for (let i = 0; i < 4; i++) {
+                const wStart = new Date(monday);
+                wStart.setDate(monday.getDate() - (i * 7));
+                const wEnd = new Date(wStart);
+                wEnd.setDate(wStart.getDate() + 6);
+                wEnd.setHours(23, 59, 59, 999);
+
+                let wTotal = 0;
+                allRecords.forEach(r => {
+                    const rd = new Date(r.startTime);
+                    if (rd >= wStart && rd <= wEnd) {
+                        wTotal += (r.endTime - r.startTime);
+                    }
+                });
+                weeklyData.push({ start: wStart, end: wEnd, total: wTotal });
+            }
+            // 表示順は古い順 (3週間前 -> 今週) に直す
+            weeklyData.reverse();
+
+            // リスト表示
+            let summaryText = 'Total (By week)\n';
+            weeklyData.forEach(d => {
+                const startStr = `${monthNames[d.start.getMonth()]} ${getOrdinal(d.start.getDate())}`;
+                const endStr = `${getOrdinal(d.end.getDate())}`;
+                // パディング調整 (簡易的)
+                const dateRange = `${startStr} - ${endStr}`;
+                const paddedDateRange = dateRange.padEnd(17, ' ');
+                summaryText += `${paddedDateRange}|${formatDuration(d.total)}\n`;
+            });
+
+            const grandTotal = weeklyData.reduce((sum, d) => sum + d.total, 0);
+            summaryText += '----------------------------\n';
+            summaryText += `${'4 Weeks Total'.padEnd(17, ' ')}|${formatDuration(grandTotal)}\n`;
+            const avg = grandTotal / 4;
+            summaryText += `${'4 Weeks Average'.padEnd(17, ' ')}|${formatDuration(avg)}`;
+            subjectSummaryEl.textContent = summaryText;
+
+            // 比較 (Vs.L-W): 1週間ずらした4週間 (つまり、一番古い週のさらに1週間前から、今週の1週間前まで)
+            // Current: [W-3, W-2, W-1, W0]
+            // Prev:    [W-4, W-3, W-2, W-1]
+            // Diff = CurrentSum - PrevSum
+            // PrevSum = (Sum of W-3..W-1) + (Sum of W-4)
+            // CurrentSum = (Sum of W-3..W-1) + (Sum of W0)
+            // Diff = Sum(W0) - Sum(W-4)
+            // ...という計算もできるが、単純に再計算する
+
+            const prevWindowEnd = new Date(monday);
+            prevWindowEnd.setDate(monday.getDate() - 7); // 先週の月曜が基準...ではなく、先週の日曜が終わり
+            // mondayは今週の月曜。
+            // 今週の4週間: [Monday-3weeks, Sunday]
+            // 先週の4週間: [Monday-4weeks, Sunday-1week]
+
+            // 単純に total を計算
+            let prevGrandTotal = 0;
+            for (let i = 0; i < 4; i++) {
+                // 1週間ずらすので i+1
+                const wStart = new Date(monday);
+                wStart.setDate(monday.getDate() - ((i + 1) * 7));
+                const wEnd = new Date(wStart);
+                wEnd.setDate(wStart.getDate() + 6);
+                wEnd.setHours(23, 59, 59, 999);
+
+                allRecords.forEach(r => {
+                    const rd = new Date(r.startTime);
+                    if (rd >= wStart && rd <= wEnd) {
+                        prevGrandTotal += (r.endTime - r.startTime);
+                    }
+                });
+            }
+
+            const prevAvg = prevGrandTotal / 4;
+            const diff = avg - prevAvg;
+            const prefix = diff > 1000 ? '+' : diff < -1000 ? '-' : '±';
+            const color = prefix === '+' ? '#0d0' : prefix === '-' ? 'red' : 'orange';
+            comparisonSummaryEl.textContent = `${'Vs. Last 4 Weeks'.padEnd(17, ' ')}${prefix}${formatDuration(Math.abs(diff))}`;
+            comparisonSummaryEl.style.color = color;
+
+            // グラフ描画
+            const graphEl = document.getElementById('weekly-graph');
+            const graphNavEl = document.getElementById('graph-nav');
+
+            // ナビゲーション更新
+            // 4週間の範囲を表示: 一番古い週の月曜 - 今週の日曜
+            const rangeStart = weeklyData[0].start;
+            const rangeEnd = weeklyData[3].end;
+
+            graphNavEl.innerHTML = `
+                <span class="nav-arrow" id="prev-week-btn">&lt;-</span>
+                <span id="week-range-display">${formatGraphDate(rangeStart)} - ${formatGraphDate(rangeEnd)}</span>
+                <span class="nav-arrow" id="next-week-btn">-&gt;</span>
+            `;
+
+            const maxMs = Math.max(...weeklyData.map(d => d.total), 1);
+            const maxHours = maxMs / 3600000;
+            let yAxisMaxHours = (maxHours > 0) ? Math.ceil(maxHours / 2) * 2 : 2;
+            if (yAxisMaxHours > 16) yAxisMaxHours = 16;
+
+            const GRAPH_HEIGHT = 16;
+            const lines = [];
+
+            for (let i = GRAPH_HEIGHT; i >= 0; i--) {
+                let line = '';
+                const currentLineHour = (i / GRAPH_HEIGHT) * yAxisMaxHours;
+
+                if (i % 4 === 0) {
+                    let labelText = (currentLineHour % 1 === 0) ? `${currentLineHour}h` : `${currentLineHour}`;
+                    line += labelText.padEnd(3, ' ') + '|';
+                } else {
+                    line += '   |';
+                }
+
+                if (i === 0) {
+                    line += '-'.repeat(57); // 4 + 13*4 + 1 (separator) = 57 (approx)
+                } else {
+                    // 4本のバーを描画
+                    // 幅を広めに取る (13文字幅)
+                    for (let wIndex = 0; wIndex < 4; wIndex++) {
+                        const wHours = weeklyData[wIndex].total / 3600000;
+                        if (wHours >= currentLineHour) {
+                            line += '    -----    '; // 4 + 5 + 4 = 13
+                        } else {
+                            line += '             '; // 13
+                        }
+                    }
+                }
+                lines.push(line);
+            }
+            graphEl.textContent = lines.join('\n');
+
+            // X軸ラベル
+            graphXAxisEl.innerHTML = '';
+            const labelsContainer = document.createElement('div');
+            labelsContainer.textContent = '    '; // Y軸ラベル分のスペース
+            // 4つのラベル
+            weeklyData.forEach(d => {
+                const labelSpan = document.createElement('span');
+                // "Nov 17-23" 形式
+                const mStr = monthNames[d.start.getMonth()];
+                const dStart = d.start.getDate();
+                const dEnd = d.end.getDate();
+                // 月またぎの場合: Nov 24-30, Dec 1-7
+                // スペースが限られているので短縮形を検討
+                // "Nov 17-23" (9文字) -> 13文字分のスペースがある
+                let labelText = `${mStr} ${dStart}-${dEnd}`;
+                if (d.start.getMonth() !== d.end.getMonth()) {
+                    labelText = `${mStr} ${dStart}-${monthNames[d.end.getMonth()]} ${dEnd}`;
+                }
+
+                labelSpan.textContent = labelText;
+                labelSpan.style.display = 'inline-block';
+                labelSpan.style.width = '13ch'; // グラフのバー幅に合わせる
+                labelSpan.style.textAlign = 'center';
+                // labelSpan.style.fontSize = '10px'; // フォントサイズを戻す
+                labelsContainer.appendChild(labelSpan);
+            });
+            graphXAxisEl.appendChild(labelsContainer);
+        }
+        // ▲▲▲▲▲ 4週間表示の実装 ▲▲▲▲▲
+
         /*******************************************************************
          * 7. メイン制御・初期化
          *******************************************************************/
@@ -823,7 +1230,7 @@
             element.addEventListener('touchstart', startAction);
             element.addEventListener('touchend', stopAction);
         }
-        
+
         // ▼▼▼▼▼ 追加箇所 (グラフナビゲーションの連続操作機能) ▼▼▼▼▼
         function setupGraphNavControls() {
             const graphNavEl = document.getElementById('graph-nav');
@@ -851,11 +1258,11 @@
                 if (!e.target.classList.contains('nav-arrow')) {
                     return;
                 }
-                
+
                 e.preventDefault();
-                
+
                 const direction = (e.target.id === 'prev-week-btn') ? -1 : 1;
-                
+
                 const handleNav = (dir) => {
                     weekOffset += dir;
                     renderRecords();
@@ -864,10 +1271,12 @@
                 // 1. まず1回だけ動かす
                 handleNav(direction);
 
-                // 2. 押し続けた場合の連続動作を設定
-                navTimeoutId = setTimeout(() => {
-                    navIntervalId = setInterval(() => handleNav(direction), 100);
-                }, 500);
+                // 2. 押し続けた場合の連続動作を設定 (マウスのみ)
+                if (e.type === 'mousedown') {
+                    navTimeoutId = setTimeout(() => {
+                        navIntervalId = setInterval(() => handleNav(direction), 100);
+                    }, 500);
+                }
 
                 // 3. ボタンを離したことなどを検知するため、windowにリスナーを追加
                 window.addEventListener('mouseup', stopNavAction);
@@ -890,7 +1299,7 @@
                     currentTimerMode = currentTimerMode === 'countdown' ? 'study' : 'countdown';
                     if (currentTimerMode === 'study') resetStudyTimer();
                 }
-                
+
                 countdownContainer.style.display = currentTimerMode === 'countdown' ? 'block' : 'none';
                 studyTimerContainer.style.display = currentTimerMode === 'study' ? 'block' : 'none';
                 recordsContainer.style.display = 'none';
@@ -908,7 +1317,7 @@
             switchRecordsBtn.addEventListener('click', () => {
                 unlockAudio();
                 if (currentTimerMode !== 'records') {
-                    previousTimerMode = currentTimerMode; 
+                    previousTimerMode = currentTimerMode;
                 }
                 currentTimerMode = 'records';
                 countdownContainer.style.display = 'none';
@@ -917,6 +1326,12 @@
                 switchBtn.textContent = '戻る';
                 filteredDayIndex = null;
                 weekOffset = 0;
+                renderRecords();
+            });
+
+            recordsTitleEl.addEventListener('click', () => {
+                unlockAudio();
+                isMonthlyView = !isMonthlyView;
                 renderRecords();
             });
 
@@ -935,7 +1350,7 @@
             makeButtonAccelerate(document.getElementById('btn-minus-1s'), () => handleTimeChange(-1));
             makeButtonAccelerate(document.getElementById('btn-repeat-plus'), () => handleRepeatChange(1));
             makeButtonAccelerate(document.getElementById('btn-repeat-minus'), () => handleRepeatChange(-1));
-            
+
             // ▼▼▼▼▼ 変更箇所 (教科送りボタンのイベントリスナー) ▼▼▼▼▼
             const nextSubjectAction = () => {
                 if (studyTimerState !== 'setting' || isSettingProgram) return;
@@ -955,7 +1370,7 @@
             btnShow100s.addEventListener('click', () => {
                 showHundredths = !showHundredths; btnShow100s.classList.toggle('toggled', showHundredths); updateStudyTimerDisplay();
             });
-            
+
             document.getElementById('btn-pset').addEventListener('click', async () => {
                 if (studyTimerState !== 'setting' || settingTime === 0 || programs.length >= 99 || isSettingProgram) return;
                 unlockAudio(); isSettingProgram = true;
@@ -1020,9 +1435,10 @@
             setupGraphNavControls(); // グラフナビゲーションのイベントリスナーを一度だけ設定
             // ▲▲▲▲▲ 追加箇所 ▲▲▲▲▲
         }
-        
+
         initialize();
 
     </script>
 </body>
+
 </html>
