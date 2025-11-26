@@ -1160,7 +1160,12 @@
 
                 if (i % 4 === 0) {
                     let labelText = (currentLineHour % 1 === 0) ? `${currentLineHour}h` : `${currentLineHour}`;
-                    line += labelText.padEnd(3, ' ') + '|';
+                    // "10.5" のように4文字になる場合は "|" を省略してズレを防ぐ
+                    if (labelText.length > 3) {
+                        line += labelText;
+                    } else {
+                        line += labelText.padEnd(3, ' ') + '|';
+                    }
                 } else {
                     line += '   |';
                 }
