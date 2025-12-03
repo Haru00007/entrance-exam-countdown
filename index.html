@@ -849,7 +849,7 @@
             const maxMs = Math.max(...dailyTotals, 1);
             const maxHours = maxMs / 3600000;
             let yAxisMaxHours = (maxHours > 0) ? Math.ceil(maxHours / 2) * 2 : 2;
-            if (yAxisMaxHours > 16) yAxisMaxHours = 16;
+            if (yAxisMaxHours > 100) yAxisMaxHours = 100;
 
             const GRAPH_HEIGHT = 16;
             const lines = [];
@@ -1149,7 +1149,7 @@
             const maxMs = Math.max(...weeklyData.map(d => d.total), 1);
             const maxHours = maxMs / 3600000;
             let yAxisMaxHours = (maxHours > 0) ? Math.ceil(maxHours / 2) * 2 : 2;
-            if (yAxisMaxHours > 16) yAxisMaxHours = 16;
+            if (yAxisMaxHours > 100) yAxisMaxHours = 100;
 
             const GRAPH_HEIGHT = 16;
             const lines = [];
