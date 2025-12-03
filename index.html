@@ -539,7 +539,7 @@
 
         let filteredDayIndex = null;
         let weekOffset = 0;
-        let isMonthlyView = false;
+        let currentRecordViewMode = 'weekly'; // 'weekly', 'monthly', 'total'
 
         /*******************************************************************
          * 2. 共通テストタイマー関連 (変更なし)
@@ -928,12 +928,15 @@
             // --- 週表示の場合の処理 ---
             // --- 週表示の場合の処理 ---
             if (filteredDayIndex === null) {
-                // ▼▼▼▼▼ 4週間表示への分岐 ▼▼▼▼▼
-                if (isMonthlyView) {
+                // ▼▼▼▼▼ ビューモード分岐 ▼▼▼▼▼
+                if (currentRecordViewMode === 'monthly') {
                     renderMonthlyView(allRecords, monday, new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000));
                     return;
+                } else if (currentRecordViewMode === 'total') {
+                    renderTotalView(allRecords);
+                    return;
                 }
-                // ▲▲▲▲▲ 4週間表示への分岐 ▲▲▲▲▲
+                // ▲▲▲▲▲ ビューモード分岐 ▲▲▲▲▲
 
                 recordsTitleEl.textContent = (weekOffset === 0) ? 'This Week Records' : 'Records';
                 const sunday = new Date(monday);
@@ -1038,7 +1041,7 @@
             }
 
             // グラフは最後に描画
-            if (!isMonthlyView) renderWeeklyGraph();
+            if (currentRecordViewMode === 'weekly') renderWeeklyGraph();
         }
 
         // ▼▼▼▼▼ 4週間表示の実装 ▼▼▼▼▼
@@ -1218,6 +1221,115 @@
         }
         // ▲▲▲▲▲ 4週間表示の実装 ▲▲▲▲▲
 
+        // ▼▼▼▼▼ Total Records表示の実装 ▼▼▼▼▼
+        function renderTotalView(allRecords) {
+            recordsTitleEl.textContent = 'Total Records';
+            comparisonSummaryEl.innerHTML = ''; // 比較はなし（または必要に応じて実装）
+
+            // 集計
+            const subjectTotals = {};
+            let grandTotal = 0;
+            allRecords.forEach(r => {
+                const duration = r.endTime - r.startTime;
+                grandTotal += duration;
+                subjectTotals[r.subject] = (subjectTotals[r.subject] || 0) + duration;
+            });
+
+            // 0hの教科を除外してソート（降順）
+            const sortedSubjects = Object.keys(subjectTotals)
+                .filter(s => subjectTotals[s] > 0)
+                .sort((a, b) => subjectTotals[b] - subjectTotals[a]);
+
+            // リスト表示
+            let summaryText = 'Total (By Subjects)\n--------------------------------\n';
+            sortedSubjects.forEach(subject => {
+                const totalMs = subjectTotals[subject];
+                const name = subjectAbbreviations[subject] || subject;
+                summaryText += `${name.padEnd(8, ' ')}|${formatDuration(totalMs)}\n`;
+            });
+            summaryText += '--------------------------------\n';
+            summaryText += `Total   |${formatDuration(grandTotal)}\n`;
+            const avg = sortedSubjects.length > 0 ? grandTotal / sortedSubjects.length : 0;
+            summaryText += `Avg.    |${formatDuration(avg)}`; // Total / (教科数)
+
+            subjectSummaryEl.textContent = summaryText;
+            logListEl.innerHTML = ''; // ログリストは非表示（または必要なら表示）
+
+            // グラフ描画
+            const graphEl = document.getElementById('weekly-graph');
+            const graphNavEl = document.getElementById('graph-nav');
+            const graphXAxisEl = document.getElementById('graph-x-axis');
+
+            // ナビゲーション非表示（全期間なので）
+            graphNavEl.innerHTML = '';
+
+            if (sortedSubjects.length === 0) {
+                graphEl.textContent = 'No Data';
+                graphXAxisEl.innerHTML = '';
+                return;
+            }
+
+            const maxMs = Math.max(...sortedSubjects.map(s => subjectTotals[s]), 1);
+            const maxHours = maxMs / 3600000;
+            let yAxisMaxHours = (maxHours > 0) ? Math.ceil(maxHours / 2) * 2 : 2;
+            if (yAxisMaxHours > 1000) yAxisMaxHours = Math.ceil(maxHours / 100) * 100; // 大きすぎる場合の調整
+
+            const GRAPH_HEIGHT = 16;
+            const lines = [];
+
+            for (let i = GRAPH_HEIGHT; i >= 0; i--) {
+                let line = '';
+                const currentLineHour = (i / GRAPH_HEIGHT) * yAxisMaxHours;
+
+                if (i % 4 === 0) {
+                    let labelText = (currentLineHour % 1 === 0) ? `${currentLineHour}h` : `${currentLineHour.toFixed(1)}`;
+                    if (labelText.length > 4) {
+                        line += labelText.substring(0, 4); // スペースの都合上切り詰め
+                    } else {
+                        line += labelText.padEnd(4, ' ') + '|';
+                    }
+                } else {
+                    line += '    |';
+                }
+
+                if (i === 0) {
+                    line += '-'.repeat(sortedSubjects.length * 6 + 2);
+                } else {
+                    for (const subject of sortedSubjects) {
+                        const sHours = subjectTotals[subject] / 3600000;
+                        if (sHours >= currentLineHour) {
+                            line += '  --  ';
+                        } else {
+                            line += '      ';
+                        }
+                    }
+                }
+                lines.push(line);
+            }
+            graphEl.textContent = lines.join('\n');
+
+            // X軸ラベル
+            graphXAxisEl.innerHTML = '';
+            const labelsContainer = document.createElement('div');
+            labelsContainer.textContent = '     '; // Y軸ラベル分
+            sortedSubjects.forEach(subject => {
+                const labelSpan = document.createElement('span');
+                // 短縮名を使用、さらに短くする
+                let abbr = subjectAbbreviations[subject] ? subjectAbbreviations[subject].trim() : subject.substring(0, 3);
+                // "M-JPN." -> "M-JP" 程度に
+                abbr = abbr.replace(/\./g, '').substring(0, 4);
+
+                labelSpan.textContent = abbr;
+                labelSpan.style.display = 'inline-block';
+                labelSpan.style.width = '6ch';
+                labelSpan.style.textAlign = 'center';
+                labelSpan.style.fontSize = '10px';
+                labelsContainer.appendChild(labelSpan);
+            });
+            graphXAxisEl.appendChild(labelsContainer);
+        }
+        // ▲▲▲▲▲ Total Records表示の実装 ▲▲▲▲▲
+
         /*******************************************************************
          * 7. メイン制御・初期化
          *******************************************************************/
@@ -1331,12 +1443,19 @@
                 switchBtn.textContent = '戻る';
                 filteredDayIndex = null;
                 weekOffset = 0;
+                currentRecordViewMode = 'weekly'; // Reset to weekly
                 renderRecords();
             });
 
             recordsTitleEl.addEventListener('click', () => {
                 unlockAudio();
-                isMonthlyView = !isMonthlyView;
+                if (currentRecordViewMode === 'weekly') {
+                    currentRecordViewMode = 'monthly';
+                } else if (currentRecordViewMode === 'monthly') {
+                    currentRecordViewMode = 'total';
+                } else {
+                    currentRecordViewMode = 'weekly';
+                }
                 renderRecords();
             });
 
