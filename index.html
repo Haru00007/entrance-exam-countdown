@@ -623,22 +623,32 @@
         let expectedEndTime = 0;
         const chimeSound = new Audio('Chime.wav');
         let isAudioUnlocked = false;
+        // ▼▼▼ Global for Stopwatch ▼▼▼
+        let stopwatchStartTime = 0;
+        let isStopwatchMode = false;
+        // ▲▲▲ Global for Stopwatch ▲▲▲
+        let isChimeEnabled = true; // Default On
+        let lastResetClickTime = 0; // For double-click detection
 
         function unlockAudio() {
             if (isAudioUnlocked) return;
-            chimeSound.volume = 0;
+            // iOS often requires 'muted' for auto-play Unlock if not user-initiated immediately
+            chimeSound.muted = true;
             chimeSound.play().then(() => {
                 chimeSound.pause();
                 chimeSound.currentTime = 0;
-                chimeSound.volume = 1;
+                chimeSound.muted = false; // Unmute for actual use
+                // chimeSound.volume is default 1
                 isAudioUnlocked = true;
                 console.log("Audio unlocked successfully.");
             }).catch(error => console.error("Audio unlock failed:", error));
         }
 
         function playChime() {
+            if (!isChimeEnabled) return; // Check flag
             if (!isAudioUnlocked) {
                 console.warn("Audio is not unlocked yet. Cannot play chime.");
+                // Try to unlock again if possible? (Won't work without user interaction usually)
                 return;
             }
             chimeSound.pause();
@@ -647,6 +657,59 @@
         }
 
         function updateStudyTimerDisplay() {
+            // ▼▼▼ Stopwatch Logic ▼▼▼
+            if (isStopwatchMode) {
+                const diff = (studyTimerState === 'running') ? (Date.now() - stopwatchStartTime) : runningTime;
+
+                // Main Display (MM:SS)
+                const totalSeconds = Math.floor(diff / 1000);
+                const totalMinutes = Math.floor(totalSeconds / 60);
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                const seconds = totalSeconds % 60;
+                const days = Math.floor(hours / 24);
+                const displayHours = hours % 24;
+                const msec = diff % 1000;
+
+                // MM:SS (Minutes 0-padded if Total Hours >= 1)
+                const minutesStr = (hours > 0) ? String(minutes).padStart(2, '0') : String(minutes).padStart(2, '!');
+                studyDisplayEl.textContent = `${minutesStr}:${String(seconds).padStart(2, '0')}`;
+
+                // Lower Info: DDD HH mmm
+                // DDD (Left)
+                if (days > 0) {
+                    studyRepeatsTotalEl.textContent = String(days).padStart(3, '!');
+                } else {
+                    studyRepeatsTotalEl.textContent = '!!!'; // Off/Hidden
+                }
+
+                // HH (Center)
+                // "DDDが1以上の場合はHHは0埋め(そうでなければ消灯)" -> "If DDD>=1, HH 0-pad. Else Turn Off (DDD? or HH?)"
+                // Interpretation: If DDD>=1, Show HH(00). If DDD=0, Show HH(!!) (Space padded/Visual) OR Hide?
+                // Given "Stopwatch", seeing hours is important if >0. 
+                // But if strict to "Otherwise Turn Off", and "It" is HH, then HH is hidden.
+                // However, standard interpretation of user requirements "If X do Y (else Z)" usually applies to the formatting or visibility of the paired item.
+                // Let's assume: If DDD>=1, HH is 0-padded. If DDD=0, HH is displayed normally (space padded if <10) IF >0, or hidden if 0?
+                // "Wait, normal Timer mode puts '!!' if 0".
+                // Let's show Hours if >0 OR if Days > 0.
+                if (days > 0) {
+                    studyRepeatsCompletedEl.textContent = String(displayHours).padStart(2, '0');
+                } else {
+                    // If no days, show hours if exists.
+                    if (displayHours > 0) {
+                        studyRepeatsCompletedEl.textContent = String(displayHours).padStart(2, '!');
+                    } else {
+                        studyRepeatsCompletedEl.textContent = '!!';
+                    }
+                }
+
+                // mmm (Right)
+                studyProgramNumberEl.textContent = String(msec).padStart(3, '0');
+
+                return;
+            }
+            // ▲▲▲ Stopwatch Logic ▲▲▲
+
             let timeToShow = (studyTimerState === 'setting') ? settingTime * 1000 : runningTime;
             if (timeToShow < 0) timeToShow = 0;
             const totalSeconds = Math.floor(timeToShow / 1000), hours = Math.floor(totalSeconds / 3600), minutes = Math.floor((totalSeconds % 3600) / 60), seconds = totalSeconds % 60, hundredths = Math.floor((timeToShow % 1000) / 10);
@@ -678,28 +741,39 @@
 
         function updateRunningMessage() {
             if (!['running', 'paused', 'finished'].includes(studyTimerState) || programs.length === 0) return;
+
+            // Allow multi-line
+            messageEl.style.height = 'auto';
+            messageEl.style.lineHeight = '1.2';
+
             const currentProgram = programs[currentProgramIndex];
             if (studyTimerState === 'paused') {
-                messageEl.textContent = `${currentProgram.subject} (Paused)`; messageEl.style.fontSize = ''; return;
+                messageEl.innerHTML = `${currentProgram.subject}<br>(Paused)`;
+                messageEl.style.fontSize = '';
+                return;
             }
             const endTimeFormatted = formatTime(expectedEndTime);
             if (currentProgram.subject === "Break") {
                 const nextRep = (currentProgramIndex + 1 >= programs.length) ? (completedRepeats) : (completedRepeats - 1);
                 if (totalRepeats !== 0 && nextRep >= totalRepeats) {
-                    messageEl.textContent = 'Break (Last one!)';
+                    messageEl.innerHTML = 'Break<br>(Last one!)';
                 } else {
                     const nextIndex = (currentProgramIndex + 1) % programs.length;
                     const nextSubject = programs[nextIndex].subject;
-                    messageEl.textContent = `Break (NEXT: ${nextSubject}, Starts at ${endTimeFormatted})`;
+                    messageEl.innerHTML = `Break<br>(NEXT: ${nextSubject}, Starts at ${endTimeFormatted})`;
                 }
                 messageEl.style.fontSize = '29px';
             } else {
-                messageEl.textContent = `${currentProgram.subject} (Ends at ${endTimeFormatted})`;
+                messageEl.innerHTML = `${currentProgram.subject}<br>(Ends at ${endTimeFormatted})`;
                 messageEl.style.fontSize = '';
             }
         }
 
         function timerTick() {
+            if (isStopwatchMode) {
+                updateStudyTimerDisplay();
+                return;
+            }
             runningTime = expectedEndTime - Date.now();
             if (runningTime <= 0) {
                 const finishedProgram = programs[currentProgramIndex];
@@ -709,6 +783,18 @@
                 }
                 playChime();
                 currentProgramIndex++;
+
+                // ▼▼▼ Skip final Break if totalRepeats >= 2 ▼▼▼
+                if (totalRepeats >= 2 && completedRepeats >= totalRepeats) {
+                    if (currentProgramIndex < programs.length) {
+                        const nextProg = programs[currentProgramIndex];
+                        // If it is Break and is the last one in the program list
+                        if (nextProg.subject === 'Break' && currentProgramIndex === programs.length - 1) {
+                            currentProgramIndex++; // Skip it
+                        }
+                    }
+                }
+                // ▲▲▲ Skip final Break logic ▲▲▲
                 if (currentProgramIndex >= programs.length) {
                     // ▼▼▼▼▼ ここからが修正箇所 ▼▼▼▼▼
                     // 完了チェックを先に行い、その後にカウンターを増やすように順番を変更
@@ -755,9 +841,12 @@
             btnStartPause.textContent = 'Start';
             btnStartPause.classList.remove('toggled');
             messageEl.style.fontSize = '';
+            messageEl.style.height = '';
+            messageEl.style.lineHeight = '';
             currentSubjectIndex = 0;
             updateStudyTimerDisplay();
             updateSubjectDisplay();
+            isStopwatchMode = false;
         }
 
         /*******************************************************************
@@ -1490,7 +1579,58 @@
             makeButtonAccelerate(document.getElementById('btn-prev-subject'), prevSubjectAction);
             // ▲▲▲▲▲ 変更箇所 ▲▲▲▲▲
 
-            document.getElementById('btn-reset').addEventListener('click', resetStudyTimer);
+            // Modified Reset Handler for Chime Toggle
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                const now = Date.now();
+                // Condition: No programs set, Subject is Break
+                // Check BEFORE resetStudyTimer because reset clears subject index
+                if (programs.length === 0 && studyTimerState === 'setting' && subjects[currentSubjectIndex] === 'Break') {
+                    if (now - lastResetClickTime < 500) {
+                        // Double Click Detected
+                        isChimeEnabled = !isChimeEnabled;
+                        messageEl.style.height = 'auto'; // Ensure visibility
+                        messageEl.textContent = isChimeEnabled ? "Chime: On" : "Chime: Off";
+                        // Prevent "Reset" form clearing this message immediately? 
+                        // resetStudyTimer clears messageEl style usually but maybe not text immediately if we set it after?
+                        // Actually resetStudyTimer sets messageEl.style.fontSize = '' etc. and updateSubjectDisplay sets text.
+
+                        // We need to call resetStudyTimer first or after?
+                        // If we call resetStudyTimer(), it resets text to Subject Name.
+                        // So we should toggle flag, call reset, then OVERWRITE message.
+
+                        // Wait, if it's a double click, the FIRST click already called resetStudyTimer (and reset subject to 0/Break -> Modern-Japanese probably?)
+
+                        // Ah, resetStudyTimer sets currentSubjectIndex = 0.
+                        // So after 1st click, subject becomes subjects[0] (Break? No, 0 is Break in the list? Let's check).
+
+                        // subjects = ["Break", "Modern-Japanese", ...]
+                        // So Reset sets it to "Break" (Index 0).
+
+                        // So 1st click:
+                        //   State: Setting, Prog: [], Subject: Break (if user set it to Break)
+                        //   Action: Reset -> Subject Index = 0 (Break). 
+
+                        // 2nd click:
+                        //   State: Setting, Prog: [], Subject: Break (Index 0)
+                        //   Action: Double click detected -> Toggle.
+                        resetStudyTimer();
+                        messageEl.textContent = isChimeEnabled ? "Chime: On" : "Chime: Off";
+                        // Keep message for 3 seconds
+                        // We need to block updateSubjectDisplay from overwriting it? 
+                        // updateSubjectDisplay checks "if studyTimerState === setting && !isSettingProgram".
+
+                        // We can force it.
+                        setTimeout(() => {
+                            updateSubjectDisplay(); // Revert to subject name after 3s
+                        }, 3000);
+
+                        lastResetClickTime = 0; // Reset double click timer
+                        return;
+                    }
+                }
+                lastResetClickTime = now;
+                resetStudyTimer();
+            });
             btnShow100s.addEventListener('click', () => {
                 showHundredths = !showHundredths; btnShow100s.classList.toggle('toggled', showHundredths); updateStudyTimerDisplay();
             });
@@ -1515,6 +1655,71 @@
             btnStartPause.addEventListener('click', () => {
                 if (isSettingProgram || studyTimerState === 'finished') return;
                 unlockAudio();
+
+                // ▼▼▼ START of Change for Stopwatch ▼▼▼
+                if (studyTimerState === 'setting') {
+                    const subject = subjects[currentSubjectIndex];
+                    if (programs.length === 0 && settingTime === 0 && subject !== 'Break') {
+                        // Enter Stopwatch Mode
+                        isStopwatchMode = true;
+                        studyTimerState = 'running';
+                        stopwatchStartTime = Date.now();
+
+                        btnStartPause.textContent = 'Finish';
+                        btnStartPause.classList.add('toggled');
+
+                        // LED Cal Display: (Subject name) (Starts from hh:mm)
+                        const now = new Date();
+                        const startStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                        messageEl.style.height = 'auto'; // Allow multi-line
+                        messageEl.style.lineHeight = '1.2';
+                        messageEl.innerHTML = `${subject}<br>(Starts from ${startStr})`;
+                        messageEl.classList.add('subject-mode'); // Ensure font matches
+
+                        timerInterval = setInterval(timerTick, 10);
+                        updateStudyTimerDisplay();
+                        return;
+                    }
+                }
+
+                if (isStopwatchMode && studyTimerState === 'running') {
+                    // Finish Pressed
+                    const endTime = Date.now();
+                    const startTime = stopwatchStartTime;
+                    runningTime = endTime - startTime; // Save final duration
+                    studyTimerState = 'finished';
+                    clearInterval(timerInterval);
+                    btnStartPause.textContent = 'Finished';
+
+                    // LED Cal: Recorded: (Subject name) \n ([start time] - [end time])
+                    const sDate = new Date(startTime);
+                    const eDate = new Date(endTime);
+                    const sStr = `${String(sDate.getHours()).padStart(2, '0')}:${String(sDate.getMinutes()).padStart(2, '0')}`;
+                    const eStr = `${String(eDate.getHours()).padStart(2, '0')}:${String(eDate.getMinutes()).padStart(2, '0')}`;
+
+                    // Note: message-area is single line usually, but we can try generic LED text.
+                    // User requested:
+                    // Recorded: (Subject name)
+                    // ([start time] - [end time])
+                    // This might require <br> or 2 lines. messageEl uses textContent.
+                    // Let's use generic text with spaces or a separating char if one line.
+                    // Or change innerHTML.
+                    const subject = subjects[currentSubjectIndex];
+                    messageEl.style.height = 'auto'; // Allow multi-line
+                    messageEl.style.lineHeight = '1.2';
+                    messageEl.innerHTML = `Recorded: ${subject}<br>(${sStr} - ${eStr})`;
+
+                    addRecord(startTime, endTime, subject);
+
+                    setTimeout(() => {
+                        messageEl.textContent = "Your work is finished today!";
+                    }, 3000);
+
+                    updateStudyTimerDisplay();
+                    return;
+                }
+                // ▲▲▲ END of Change for Stopwatch ▲▲▲
+
                 if (studyTimerState === 'setting') {
                     if (programs.length === 0 && settingTime > 0) {
                         let subjectToSet = subjects[currentSubjectIndex];
