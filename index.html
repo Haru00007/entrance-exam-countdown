@@ -889,6 +889,95 @@
         const loadRecords = () => JSON.parse(localStorage.getItem('studyRecords') || '[]');
         const saveRecords = (records) => localStorage.setItem('studyRecords', JSON.stringify(records));
 
+        // ▼▼▼▼▼ Timer Persistence ▼▼▼▼▼
+        function saveTimerState() {
+            const state = {
+                studyTimerState,
+                runningTime,
+                stopwatchStartTime,
+                programs,
+                settingTime,
+                currentProgramIndex,
+                completedRepeats,
+                totalRepeats,
+                isStopwatchMode,
+                currentSubjectIndex,
+                weekOffset,
+                currentRecordViewMode,
+                filteredDayIndex,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('studyTimerBackup', JSON.stringify(state));
+        }
+
+        function loadTimerState() {
+            const backup = localStorage.getItem('studyTimerBackup');
+            if (!backup) return;
+
+            try {
+                const state = JSON.parse(backup);
+                // Valid state check: if it's "finished" or empty programs (and not setting), maybe treat as reset?
+                // But let's trust the backup.
+
+                programs = state.programs || [];
+                settingTime = state.settingTime || 0;
+                currentProgramIndex = state.currentProgramIndex || 0;
+                completedRepeats = state.completedRepeats || 0;
+                totalRepeats = state.totalRepeats || 1;
+                isStopwatchMode = state.isStopwatchMode || false;
+                currentSubjectIndex = state.currentSubjectIndex || 0;
+                weekOffset = state.weekOffset || 0;
+                currentRecordViewMode = state.currentRecordViewMode || 'weekly';
+                filteredDayIndex = state.filteredDayIndex === undefined ? null : state.filteredDayIndex;
+
+                if (state.studyTimerState === 'running') {
+                    const elapsed = Date.now() - state.timestamp;
+                    if (isStopwatchMode) {
+                        stopwatchStartTime = state.stopwatchStartTime;
+                    } else {
+                        runningTime = (state.runningTime || 0) - elapsed;
+                        if (runningTime <= 0) runningTime = 0;
+                        expectedEndTime = Date.now() + (runningTime / (typeof DEBUG_SPEED_MULTIPLIER !== 'undefined' ? DEBUG_SPEED_MULTIPLIER : 1));
+                        timerInterval = setInterval(timerTick, 10);
+                    }
+                    studyTimerState = 'running';
+                    btnStartPause.textContent = 'Pause';
+                    btnStartPause.classList.add('toggled');
+                } else if (state.studyTimerState === 'paused') {
+                    studyTimerState = 'paused';
+                    runningTime = state.runningTime || 0;
+                    stopwatchStartTime = state.stopwatchStartTime || 0;
+                    btnStartPause.textContent = 'Start'; // Or Resume
+                    if (programs.length > 0) btnStartPause.textContent = 'Resume'; // Better UX
+                } else if (state.studyTimerState === 'finished') {
+                    studyTimerState = 'finished';
+                    btnStartPause.textContent = 'Finished';
+                } else {
+                    studyTimerState = 'setting';
+                }
+
+                // Restore UI Mode
+                if (studyTimerState !== 'setting' || programs.length > 0 || isStopwatchMode) {
+                    currentTimerMode = 'study';
+                    countdownContainer.style.display = 'none';
+                    studyTimerContainer.style.display = 'block';
+                    recordsContainer.style.display = 'none';
+                    switchBtn.textContent = '共通テストタイマーへ';
+                    messageEl.classList.add('subject-mode');
+                }
+
+                updateStudyTimerDisplay();
+                updateSubjectDisplay();
+                if (studyTimerState === 'running' || studyTimerState === 'paused') {
+                    updateRunningMessage();
+                }
+
+            } catch (e) {
+                console.error("Failed to load timer state", e);
+            }
+        }
+        // ▲▲▲▲▲ Timer Persistence ▲▲▲▲▲
+
         function checkDailyReset() {
             const now = new Date();
             const lastResetStr = localStorage.getItem('lastReset');
@@ -1788,6 +1877,13 @@
             // ▼▼▼▼▼ 追加箇所 ▼▼▼▼▼
             setupGraphNavControls(); // グラフナビゲーションのイベントリスナーを一度だけ設定
             // ▲▲▲▲▲ 追加箇所 ▲▲▲▲▲
+
+            loadTimerState();
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') saveTimerState();
+            });
+            window.addEventListener('beforeunload', saveTimerState);
+            window.addEventListener('pagehide', saveTimerState);
         }
 
         initialize();
