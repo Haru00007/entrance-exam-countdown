@@ -735,7 +735,28 @@
 
         function updateSubjectDisplay() {
             if (studyTimerState === 'setting' && !isSettingProgram) {
-                messageEl.textContent = subjects[currentSubjectIndex];
+                const subject = subjects[currentSubjectIndex];
+                if (programs.length > 0) {
+                    // P02以降: 終了予定時刻を表示
+                    // 終了時刻 = 現在時刻 + (これまでのプログラム合計時間 + 現在設定中の時間) * リピート回数
+                    let totalProgramTime = 0;
+                    programs.forEach(p => totalProgramTime += p.time);
+                    totalProgramTime += settingTime;
+
+                    const totalDuration = totalProgramTime * totalRepeats * 1000;
+                    const projectedEndTime = Date.now() + (totalDuration / DEBUG_SPEED_MULTIPLIER);
+                    const endStr = formatTime(projectedEndTime);
+
+                    messageEl.style.height = 'auto';
+                    messageEl.style.lineHeight = '1.2';
+                    messageEl.innerHTML = `${subject}<br>(All ends at ${endStr})`;
+                    messageEl.style.fontSize = '';
+                } else {
+                    // P01: 科目名のみ
+                    messageEl.textContent = subject;
+                    messageEl.style.height = '';     // Reset style
+                    messageEl.style.lineHeight = ''; // Reset style
+                }
             }
         }
 
@@ -821,7 +842,9 @@
             settingTime += seconds;
             if (settingTime > 359999) settingTime = 359999;
             if (settingTime < 0) settingTime = 0;
+            if (settingTime < 0) settingTime = 0;
             updateStudyTimerDisplay();
+            updateSubjectDisplay(); // 時間変更時に終了予定時刻を更新
         }
 
         function handleRepeatChange(amount) {
@@ -829,7 +852,9 @@
             totalRepeats += amount;
             if (totalRepeats < 1) totalRepeats = 1;
             if (totalRepeats > 999) totalRepeats = 999;
+            if (totalRepeats > 999) totalRepeats = 999;
             updateStudyTimerDisplay();
+            updateSubjectDisplay(); // リピート変更時に終了予定時刻を更新
         }
 
         function resetStudyTimer() {
