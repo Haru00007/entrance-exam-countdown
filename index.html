@@ -938,8 +938,8 @@
                         runningTime = (state.runningTime || 0) - elapsed;
                         if (runningTime <= 0) runningTime = 0;
                         expectedEndTime = Date.now() + (runningTime / (typeof DEBUG_SPEED_MULTIPLIER !== 'undefined' ? DEBUG_SPEED_MULTIPLIER : 1));
-                        timerInterval = setInterval(timerTick, 10);
                     }
+                    timerInterval = setInterval(timerTick, 10);
                     studyTimerState = 'running';
                     btnStartPause.textContent = 'Pause';
                     btnStartPause.classList.add('toggled');
