@@ -631,19 +631,51 @@
         let chimeMode = 'A'; // 'A', 'B', 'OFF'
         let lastResetClickTime = 0; // For double-click detection
 
+        let audioContext = null;
+
         function unlockAudio() {
+            // Web Audio API Contextの初期化と再開 (iOS対策の強力なアンロック)
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            // 無音バッファの再生による強力なアンロック
+            const buffer = audioContext.createBuffer(1, 1, 22050);
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContext.destination);
+            source.start(0);
+
             if (isAudioUnlocked) return;
-            // iOS often requires 'muted' for auto-play Unlock if not user-initiated immediately
-            chimeSoundA.muted = true;
-            chimeSoundB.muted = true;
+
+            // Audio要素のアンロック: mutedではなくvolume=0で再生を試みる
+            const originalVolA = chimeSoundA.volume;
+            const originalVolB = chimeSoundB.volume;
+            chimeSoundA.volume = 0;
+            chimeSoundB.volume = 0;
+
+            // iOSではload()を明示的に呼ぶと安定する
+            chimeSoundA.load();
+            chimeSoundB.load();
 
             Promise.all([chimeSoundA.play(), chimeSoundB.play()]).then(() => {
                 chimeSoundA.pause(); chimeSoundB.pause();
                 chimeSoundA.currentTime = 0; chimeSoundB.currentTime = 0;
-                chimeSoundA.muted = false; chimeSoundB.muted = false;
+                // 音量を戻す
+                chimeSoundA.volume = originalVolA;
+                chimeSoundB.volume = originalVolB;
+
                 isAudioUnlocked = true;
                 console.log("Audio unlocked successfully.");
-            }).catch(error => console.error("Audio unlock failed:", error));
+            }).catch(error => {
+                console.error("Audio unlock failed:", error);
+                // 失敗時も音量は戻しておく
+                chimeSoundA.volume = originalVolA;
+                chimeSoundB.volume = originalVolB;
+            });
         }
 
         function playChime() {
