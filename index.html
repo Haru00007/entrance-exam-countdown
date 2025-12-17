@@ -1817,8 +1817,20 @@
 
                 // ▼▼▼ START of Change for Stopwatch ▼▼▼
                 if (studyTimerState === 'setting') {
-                    const subject = subjects[currentSubjectIndex];
+                    let subject = subjects[currentSubjectIndex]; // use let to allow update
+
                     if (programs.length === 0 && settingTime === 0 && subject !== 'Break') {
+                        // ▼▼▼ Resolve RANDOM for Stopwatch ▼▼▼
+                        if (subject === 'RANDOM') {
+                            const candidateSubjects = subjects.filter(s => s !== 'Break' && s !== 'RANDOM');
+                            const newSubject = candidateSubjects[Math.floor(Math.random() * candidateSubjects.length)];
+                            // Update global index so it persists for finish/record
+                            currentSubjectIndex = subjects.indexOf(newSubject);
+                            subject = newSubject;
+                            updateSubjectDisplay(); // Show the concrete subject
+                        }
+                        // ▲▲▲ Resolve RANDOM for Stopwatch ▲▲▲
+
                         // Enter Stopwatch Mode
                         isStopwatchMode = true;
                         studyTimerState = 'running';
