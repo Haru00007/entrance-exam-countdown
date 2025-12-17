@@ -621,39 +621,44 @@
         let currentProgramIndex = 0, totalRepeats = 1, completedRepeats = 0;
         let showHundredths = false, timerInterval = null, isSettingProgram = false;
         let expectedEndTime = 0;
-        const chimeSound = new Audio('Chime.wav');
+        const chimeSoundA = new Audio('Chime-a.wav');
+        const chimeSoundB = new Audio('Chime-b.wav');
         let isAudioUnlocked = false;
         // ▼▼▼ Global for Stopwatch ▼▼▼
         let stopwatchStartTime = 0;
         let isStopwatchMode = false;
         // ▲▲▲ Global for Stopwatch ▲▲▲
-        let isChimeEnabled = true; // Default On
+        let chimeMode = 'A'; // 'A', 'B', 'OFF'
         let lastResetClickTime = 0; // For double-click detection
 
         function unlockAudio() {
             if (isAudioUnlocked) return;
             // iOS often requires 'muted' for auto-play Unlock if not user-initiated immediately
-            chimeSound.muted = true;
-            chimeSound.play().then(() => {
-                chimeSound.pause();
-                chimeSound.currentTime = 0;
-                chimeSound.muted = false; // Unmute for actual use
-                // chimeSound.volume is default 1
+            chimeSoundA.muted = true;
+            chimeSoundB.muted = true;
+
+            Promise.all([chimeSoundA.play(), chimeSoundB.play()]).then(() => {
+                chimeSoundA.pause(); chimeSoundB.pause();
+                chimeSoundA.currentTime = 0; chimeSoundB.currentTime = 0;
+                chimeSoundA.muted = false; chimeSoundB.muted = false;
                 isAudioUnlocked = true;
                 console.log("Audio unlocked successfully.");
             }).catch(error => console.error("Audio unlock failed:", error));
         }
 
         function playChime() {
-            if (!isChimeEnabled) return; // Check flag
+            if (chimeMode === 'OFF') return;
             if (!isAudioUnlocked) {
                 console.warn("Audio is not unlocked yet. Cannot play chime.");
-                // Try to unlock again if possible? (Won't work without user interaction usually)
                 return;
             }
-            chimeSound.pause();
-            chimeSound.currentTime = 0;
-            chimeSound.play().catch(error => console.error("音声の再生に失敗しました:", error));
+            if (chimeMode === 'A') {
+                chimeSoundA.pause(); chimeSoundA.currentTime = 0;
+                chimeSoundA.play().catch(e => console.error("Chime A failed:", e));
+            } else if (chimeMode === 'B') {
+                chimeSoundB.pause(); chimeSoundB.currentTime = 0;
+                chimeSoundB.play().catch(e => console.error("Chime B failed:", e));
+            }
         }
 
         function updateStudyTimerDisplay() {
@@ -905,6 +910,7 @@
                 weekOffset,
                 currentRecordViewMode,
                 filteredDayIndex,
+                chimeMode,
                 timestamp: Date.now()
             };
             localStorage.setItem('studyTimerBackup', JSON.stringify(state));
@@ -928,7 +934,10 @@
                 currentSubjectIndex = state.currentSubjectIndex || 0;
                 weekOffset = state.weekOffset || 0;
                 currentRecordViewMode = state.currentRecordViewMode || 'weekly';
+                weekOffset = state.weekOffset || 0;
+                currentRecordViewMode = state.currentRecordViewMode || 'weekly';
                 filteredDayIndex = state.filteredDayIndex === undefined ? null : state.filteredDayIndex;
+                chimeMode = state.chimeMode || 'A';
 
                 if (state.studyTimerState === 'running') {
                     const elapsed = Date.now() - state.timestamp;
@@ -1701,9 +1710,13 @@
                 if (programs.length === 0 && studyTimerState === 'setting' && subjects[currentSubjectIndex] === 'Break') {
                     if (now - lastResetClickTime < 500) {
                         // Double Click Detected
-                        isChimeEnabled = !isChimeEnabled;
+                        if (chimeMode === 'A') chimeMode = 'B';
+                        else if (chimeMode === 'B') chimeMode = 'OFF';
+                        else chimeMode = 'A';
+
                         messageEl.style.height = 'auto'; // Ensure visibility
-                        messageEl.textContent = isChimeEnabled ? "Chime: On" : "Chime: Off";
+                        let modeStr = (chimeMode === 'OFF') ? "Off" : chimeMode;
+                        messageEl.textContent = `Chime: ${modeStr}`;
                         // Prevent "Reset" form clearing this message immediately? 
                         // resetStudyTimer clears messageEl style usually but maybe not text immediately if we set it after?
                         // Actually resetStudyTimer sets messageEl.style.fontSize = '' etc. and updateSubjectDisplay sets text.
@@ -1728,7 +1741,7 @@
                         //   State: Setting, Prog: [], Subject: Break (Index 0)
                         //   Action: Double click detected -> Toggle.
                         resetStudyTimer();
-                        messageEl.textContent = isChimeEnabled ? "Chime: On" : "Chime: Off";
+                        messageEl.textContent = `Chime: ${modeStr}`;
                         // Keep message for 3 seconds
                         // We need to block updateSubjectDisplay from overwriting it? 
                         // updateSubjectDisplay checks "if studyTimerState === setting && !isSettingProgram".
